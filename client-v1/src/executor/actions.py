@@ -13,6 +13,31 @@ import sys
 import time
 
 
+# Windows 虚拟键码表
+VK = {
+    "ctrl": 0x11, "control": 0x11,
+    "shift": 0x10,
+    "alt": 0x12,
+    "win": 0x5B, "meta": 0x5B,
+    "0": 0x30, "1": 0x31, "2": 0x32, "3": 0x33, "4": 0x34,
+    "5": 0x35, "6": 0x36, "7": 0x37, "8": 0x38, "9": 0x39,
+    "a": 0x41, "b": 0x42, "c": 0x43, "d": 0x44, "e": 0x45,
+    "f": 0x46, "g": 0x47, "h": 0x48, "i": 0x49, "j": 0x4A,
+    "k": 0x4B, "l": 0x4C, "m": 0x4D, "n": 0x4E, "o": 0x4F,
+    "p": 0x50, "q": 0x51, "r": 0x52, "s": 0x53, "t": 0x54,
+    "u": 0x55, "v": 0x56, "w": 0x57, "x": 0x58, "y": 0x59,
+    "z": 0x5A,
+    "enter": 0x0D, "esc": 0x1B, "tab": 0x09,
+    "space": 0x20, "backspace": 0x08,
+    "delete": 0x2E, "insert": 0x2D,
+    "up": 0x26, "down": 0x28, "left": 0x25, "right": 0x27,
+    "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73,
+    "f5": 0x74, "f6": 0x75, "f7": 0x76, "f8": 0x77,
+    "f9": 0x78, "f10": 0x79, "f11": 0x7A, "f12": 0x7B,
+    "volume_mute": 0xAD, "volume_down": 0xAE, "volume_up": 0xAF,
+}
+
+
 class ActionExecutor:
     """跨平台动作执行器。"""
 
@@ -28,6 +53,8 @@ class ActionExecutor:
             if action_type == "log":
                 print(f"[Log] {payload}")
                 return {"ok": True, "detail": payload}
+            elif action_type == "key":
+                return self._execute_key(payload)
             elif action_type == "key_combo":
                 return self._execute_key_combo(payload)
             elif action_type == "macro":
@@ -38,6 +65,26 @@ class ActionExecutor:
                 return {"ok": False, "detail": f"未知动作类型: {action_type}"}
         except Exception as e:
             return {"ok": False, "detail": f"执行失败: {e}"}
+
+    def _execute_key(self, key: str) -> dict:
+        """发送单个按键（无修饰键）。"""
+        return self._keybd_send(key)
+
+    def _keybd_send(self, key: str) -> dict:
+        """底层的 keybd_event 发送（单键按下+松开）。"""
+        key = key.lower().strip()
+        vk = VK.get(key)
+        if vk is None and len(key) == 1 and 'a' <= key <= 'z':
+            vk = ord(key.upper())
+        if vk is None:
+            return {"ok": False, "detail": f"未知按键: {key}"}
+        import ctypes
+        try:
+            ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+            ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+            return {"ok": True, "detail": f"按键: {key}"}
+        except Exception as e:
+            return {"ok": False, "detail": f"keybd_event 失败: {e}"}
 
     def _execute_key_combo(self, combo: str) -> dict:
         """模拟键盘快捷键。
@@ -92,23 +139,6 @@ class ActionExecutor:
 
         # ── 普通快捷键 ──
         import ctypes
-        VK = {
-            "ctrl": 0x11, "control": 0x11,
-            "shift": 0x10,
-            "alt": 0x12,
-            "win": 0x5B, "meta": 0x5B,
-            "c": 0x43, "v": 0x56, "x": 0x58, "z": 0x5A,
-            "a": 0x41, "s": 0x53, "d": 0x44, "f": 0x46,
-            "enter": 0x0D, "esc": 0x1B, "tab": 0x09,
-            "space": 0x20, "backspace": 0x08,
-            "delete": 0x2E, "insert": 0x2D,
-            "up": 0x26, "down": 0x28, "left": 0x25, "right": 0x27,
-            "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73,
-            "f5": 0x74, "f6": 0x75, "f7": 0x76, "f8": 0x77,
-            "f9": 0x78, "f10": 0x79, "f11": 0x7A, "f12": 0x7B,
-            "volume_mute": 0xAD, "volume_down": 0xAE, "volume_up": 0xAF,
-        }
-
         parts = combo.lower().split("+")
         mods = []
         main_vk = None

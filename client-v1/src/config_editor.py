@@ -323,6 +323,8 @@ class ActionParamFrame(tk.Frame):
             self._build_macro()
         elif t == "script":
             self._build_script()
+        elif t == "key":
+            self._build_key()
         else:  # log / 其他
             self._build_text()
 
@@ -418,6 +420,22 @@ class ActionParamFrame(tk.Frame):
             fname = os.path.basename(path)
             self._path_label.configure(text=f"📂 {fname}")
             self._fire_change()
+
+    def _build_key(self):
+        """单键输入：简单文本框，直接写按键名（a / enter / f5）。"""
+        row = tk.Frame(self, bg=BG)
+        row.pack(fill=tk.X)
+        entry = tk.Entry(
+            row, textvariable=self._payload_var, width=12,
+            bg=INPUT_BG, fg=FG, bd=0, font=("Segoe UI", 10),
+        )
+        entry.pack(side=tk.LEFT, padx=(0, 6), ipady=2)
+        tk.Label(
+            row, text="单个按键（a / enter / f5）",
+            font=("Segoe UI", 8), bg=BG, fg=DIM,
+        ).pack(side=tk.LEFT)
+        self._widget = entry
+        entry.bind("<KeyRelease>", lambda e: self._fire_change())
 
     def _build_text(self):
         """纯文本输入（用于 log 等类型）。"""
@@ -628,7 +646,7 @@ class ConfigEditor:
         type_var = tk.StringVar(value=item.action_type)
         type_combo = ttk.Combobox(
             row, textvariable=type_var,
-            values=["log", "key_combo", "macro", "script"],
+            values=["log", "key", "key_combo", "macro", "script"],
             width=10, state="readonly",
         )
         type_combo.pack(side=tk.LEFT)
@@ -703,7 +721,7 @@ class ConfigEditor:
             type_var = tk.StringVar(value=b.action_type)
             type_combo = ttk.Combobox(
                 row, textvariable=type_var,
-                values=["log", "key_combo", "macro", "script"],
+                values=["log", "key", "key_combo", "macro", "script"],
                 width=10, state="readonly",
             )
             type_combo.pack(side=tk.LEFT, padx=4)
@@ -773,7 +791,7 @@ class ConfigEditor:
         self._scroll_up_type = tk.StringVar(value=self.config.scroll.up_action_type)
         ttk.Combobox(
             r_up, textvariable=self._scroll_up_type,
-            values=["log", "key_combo", "macro", "script"],
+            values=["log", "key", "key_combo", "macro", "script"],
             width=10, state="readonly",
         ).pack(side=tk.LEFT, padx=4)
 
@@ -798,7 +816,7 @@ class ConfigEditor:
         self._scroll_down_type = tk.StringVar(value=self.config.scroll.down_action_type)
         ttk.Combobox(
             r_down, textvariable=self._scroll_down_type,
-            values=["log", "key_combo", "macro", "script"],
+            values=["log", "key", "key_combo", "macro", "script"],
             width=10, state="readonly",
         ).pack(side=tk.LEFT, padx=4)
 

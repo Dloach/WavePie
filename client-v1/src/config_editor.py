@@ -733,7 +733,6 @@ class ConfigEditor:
         sections = [
             ("menu", "菜单项"),
             ("direct", "直接动作"),
-            ("scroll", "滚轮映射"),
             ("gesture", "手势参数"),
             ("ui", "UI 外观"),
         ]

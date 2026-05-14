@@ -294,12 +294,7 @@ class OverlayUI:
     def on_global_esc(self):
         if self._state == "menu_open":
             self.root.after(0, self.deactivate)
-        else:
-            self.root.after(0, self._quit)
-
-    def _quit(self):
-        self.root.destroy()
-        sys.exit(0)
+        # idle 时 ESC 无操作（防止误退）
 
     # ══════════════════════════════════════════════════════
     # 绘制：全量重绘（30fps 节流）

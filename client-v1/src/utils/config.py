@@ -47,6 +47,7 @@ class MenuItem(ActionDef):
 class ButtonMapDef:
     """按键映射配置条目。"""
     button_id: int = 0
+    trigger: str = ""                  # "gamepad:3" 等触发键标识
     route: str = "overlay"             # "overlay" | "direct"
     label: str = ""
     # route=overlay 时的菜单项
@@ -140,6 +141,7 @@ def load_config(path: str = None) -> AppConfig:
     for b in raw.get("buttons", []):
         bm = ButtonMapDef(
             button_id=b.get("button_id", 0),
+            trigger=b.get("trigger", ""),
             route=b.get("route", "direct"),
             label=b.get("label", ""),
             action_type=b.get("action_type", ""),
@@ -200,6 +202,8 @@ def save_config(cfg: AppConfig, path: str) -> None:
             "route": b.route,
             "label": b.label,
         }
+        if b.trigger:
+            bd["trigger"] = b.trigger
         if b.route == "overlay" and b.menu_items:
             bd["menu_items"] = [
                 {

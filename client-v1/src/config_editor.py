@@ -14,6 +14,7 @@
 import os
 import sys
 import threading
+import time
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from typing import Optional
@@ -210,6 +211,111 @@ class KeyRecorderDialog:
 
     def show(self) -> Optional[str]:
         """显示对话框，返回组合键字符串（如 'ctrl+z'），取消返回 None。"""
+        self.dialog.wait_window()
+        return self._result
+
+
+# ============================================================
+# 手柄触发键录制对话框
+# ============================================================
+
+class GamepadTriggerRecorder:
+    """模态对话框，按下手柄按键，捕获并显示。"""
+
+    def __init__(self, parent):
+        self._result: Optional[str] = None  # 如 "gamepad:3"
+
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("录制手柄触发键")
+        self.dialog.geometry("400x180")
+        self.dialog.configure(bg=BG)
+        self.dialog.resizable(False, False)
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+
+        tk.Label(
+            self.dialog, text="按下手柄上你想用作触发的按键…",
+            font=("Segoe UI", 12), bg=BG, fg=FG,
+        ).pack(pady=(24, 8))
+
+        self._display_var = tk.StringVar(value="（等待按键…）")
+        tk.Label(
+            self.dialog, textvariable=self._display_var,
+            font=("Segoe UI", 18, "bold"), bg=BG, fg=ACCENT,
+        ).pack(pady=12)
+
+        btn_frame = tk.Frame(self.dialog, bg=BG)
+        btn_frame.pack(pady=12)
+        tk.Button(
+            btn_frame, text="✅ 确认", font=("Segoe UI", 10, "bold"),
+            bg=ACCENT, fg="white", bd=0, padx=20, pady=4,
+            cursor="hand2", command=self._confirm,
+        ).pack(side=tk.LEFT, padx=6)
+        tk.Button(
+            btn_frame, text="❌ 取消", font=("Segoe UI", 10),
+            bg=CARD, fg=FG, bd=0, padx=20, pady=4,
+            cursor="hand2", command=self._cancel,
+        ).pack(side=tk.LEFT, padx=6)
+
+        self._recording = True
+        self._captured = None
+        self._start_polling()
+
+        self.dialog.protocol("WM_DELETE_WINDOW", self._cancel)
+
+    def _start_polling(self):
+        """在后台线程轮询手柄按键。"""
+        import threading
+        t = threading.Thread(target=self._poll_loop, daemon=True)
+        t.start()
+
+    def _poll_loop(self):
+        import pygame
+        try:
+            pygame.init()
+            pygame.joystick.init()
+            count = pygame.joystick.get_count()
+            if count == 0:
+                self._display_var.set("❌ 未检测到手柄")
+                return
+            j = pygame.joystick.Joystick(0)
+            j.init()
+            name = j.get_name()
+            num_buttons = j.get_numbuttons()
+            self._display_var.set(f"已连接: {name}")
+
+            while self._recording:
+                pygame.event.pump()
+                for k in range(num_buttons):
+                    if j.get_button(k):
+                        self._captured = k
+                        self._display_var.set(
+                            f"🎮 按钮 {k} — {name}"
+                        )
+                        self._recording = False
+                        break
+                time.sleep(0.05)
+        except Exception as e:
+            self._display_var.set(f"❌ 错误: {e}")
+
+    def _confirm(self):
+        if self._captured is not None:
+            self._result = f"gamepad:{self._captured}"
+        self._cleanup()
+
+    def _cancel(self):
+        self._result = None
+        self._cleanup()
+
+    def _cleanup(self):
+        self._recording = False
+        try:
+            self.dialog.destroy()
+        except Exception:
+            pass
+
+    def show(self) -> Optional[str]:
+        """显示对话框，返回触发键标识（如 'gamepad:3'），取消返回 None。"""
         self.dialog.wait_window()
         return self._result
 
@@ -694,9 +800,14 @@ class ConfigEditor:
         frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
 
         tk.Label(
-            frame, text="副键直接动作",
+            frame, text="直接动作（手柄按键一键触发）",
             font=("Segoe UI", 14, "bold"), bg=BG, fg=FG,
         ).pack(anchor="nw")
+
+        tk.Label(
+            frame, text="先录制触发键，再设置要执行的命令",
+            font=("Segoe UI", 9), bg=BG, fg=DIM,
+        ).pack(anchor="nw", pady=(0, 12))
 
         self._direct_widgets = []
         for b in self.config.buttons:
@@ -708,16 +819,29 @@ class ConfigEditor:
             row = tk.Frame(card, bg=CARD)
             row.pack(fill=tk.X, padx=10, pady=2)
 
-            tk.Label(
-                row, text=f"button_id={b.button_id}",
-                font=("Segoe UI", 9, "bold"), bg=CARD, fg=ACCENT,
-                width=12, anchor="w",
-            ).pack(side=tk.LEFT)
-            tk.Label(
-                row, text=b.label, font=("Segoe UI", 9),
-                bg=CARD, fg=DIM, width=16, anchor="w",
-            ).pack(side=tk.LEFT)
+            # ── 触发键录制 ──
+            trigger_var = tk.StringVar(value=b.trigger)
+            trigger_label = tk.Label(
+                row,
+                text=f"🎮 {trigger_var.get()}" if trigger_var.get() else "🎮 录制触发键",
+                font=("Segoe UI", 9, "bold"), bg=ACCENT, fg="white",
+                padx=10, pady=3, cursor="hand2",
+            )
+            trigger_label.pack(side=tk.LEFT, padx=(0, 8))
 
+            def make_record_click(tl=trigger_label, tv=trigger_var):
+                def record():
+                    result = GamepadTriggerRecorder(
+                        self.winfo_toplevel()
+                    ).show()
+                    if result:
+                        tv.set(result)
+                        tl.configure(text=f"🎮 {result}")
+                return record
+
+            trigger_label.bind("<Button-1>", lambda e: make_record_click()())
+
+            # ── 命令类型 ──
             type_var = tk.StringVar(value=b.action_type)
             type_combo = ttk.Combobox(
                 row, textvariable=type_var,
@@ -726,6 +850,7 @@ class ConfigEditor:
             )
             type_combo.pack(side=tk.LEFT, padx=4)
 
+            # ── 参数面板 ──
             param_frame = tk.Frame(row, bg=BG)
             param_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
 
@@ -737,7 +862,7 @@ class ConfigEditor:
             action_param.pack(fill=tk.X, expand=True)
 
             # 类型切换联动
-            def make_on_type_change(ap=action_param, tf=param_frame, w=row):
+            def make_on_type_change(ap=action_param, tf=param_frame):
                 def cb(*args):
                     new_type = type_var.get()
                     old_payload = ap.get_payload()
@@ -747,7 +872,6 @@ class ConfigEditor:
                         tf, action_type=new_type, payload=old_payload,
                     )
                     new_ap.pack(fill=tk.X, expand=True)
-                    # 更新引用
                     for dw in self._direct_widgets:
                         if dw["param"] is ap:
                             dw["param"] = new_ap
@@ -758,6 +882,7 @@ class ConfigEditor:
 
             self._direct_widgets.append({
                 "button": b,
+                "trigger_var": trigger_var,
                 "type_var": type_var,
                 "param": action_param,
             })
@@ -919,6 +1044,7 @@ class ConfigEditor:
             if hasattr(self, "_direct_widgets"):
                 for w in self._direct_widgets:
                     b = w["button"]
+                    b.trigger = w["trigger_var"].get()
                     b.action_type = w["type_var"].get()
                     b.action_payload = w["param"].get_payload()
 

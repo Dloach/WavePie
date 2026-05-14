@@ -768,9 +768,9 @@ class ConfigEditor:
         )
         action_param.pack(fill=tk.X)
 
-        # 类型切换时重建参数面板
-        def rebuild_param(ap=action_param, tf=param_frame):
-            new_type = type_var.get()
+        # 类型切换时重建参数面板（tv 用默认参数固定当前迭代的 type_var）
+        def cb_type_change(*args, tv=type_var, ap=action_param, tf=param_frame):
+            new_type = tv.get()
             old_payload = ap.get_payload()
             for w in tf.winfo_children():
                 w.destroy()
@@ -783,7 +783,7 @@ class ConfigEditor:
                     self._menu_widgets[i]["param"] = new_ap
                     break
 
-        type_combo.bind("<<ComboboxSelected>>", lambda e: rebuild_param())
+        type_combo.bind("<<ComboboxSelected>>", cb_type_change)
 
         self._menu_widgets.append({
             "idx": idx,
@@ -875,24 +875,22 @@ class ConfigEditor:
             )
             action_param.pack(fill=tk.X, expand=True)
 
-            # 类型切换联动
-            def make_on_type_change(ap=action_param, tf=param_frame):
-                def cb(*args):
-                    new_type = type_var.get()
-                    old_payload = ap.get_payload()
-                    for child in tf.winfo_children():
-                        child.destroy()
-                    new_ap = ActionParamFrame(
-                        tf, action_type=new_type, payload=old_payload,
-                    )
-                    new_ap.pack(fill=tk.X, expand=True)
-                    for dw in self._direct_widgets:
-                        if dw["param"] is ap:
-                            dw["param"] = new_ap
-                            break
-                return cb
+            # 类型切换联动（tv 用默认参数固定当前迭代的 type_var）
+            def cb_type_change(*args, tv=type_var, ap=action_param, tf=param_frame):
+                new_type = tv.get()
+                old_payload = ap.get_payload()
+                for child in tf.winfo_children():
+                    child.destroy()
+                new_ap = ActionParamFrame(
+                    tf, action_type=new_type, payload=old_payload,
+                )
+                new_ap.pack(fill=tk.X, expand=True)
+                for dw in self._direct_widgets:
+                    if dw["param"] is ap:
+                        dw["param"] = new_ap
+                        break
 
-            type_combo.bind("<<ComboboxSelected>>", make_on_type_change(action_param, param_frame))
+            type_combo.bind("<<ComboboxSelected>>", cb_type_change)
 
             self._direct_widgets.append({
                 "button": b,

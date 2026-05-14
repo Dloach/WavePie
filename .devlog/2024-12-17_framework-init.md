@@ -19,7 +19,7 @@ v0（框架层）
 - 创建 `DECISION_LOG.md` —— 已记录 3 条初始架构决策
 - 创建 `SESSION_STATE.md` —— 初始状态文件
 - 创建 `.devlog/` 目录及本日志文件
-- 创建 `v1/` 目录（空，待填充）
+- 创建 `client-v1/` 目录（空，待填充）
 
 ## 关键决策
 见 DECISION_LOG.md D-001 / D-002 / D-003

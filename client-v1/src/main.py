@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""蓝牙体感控制器 v1 — 软件模拟原型主入口。
+"""蓝牙体感控制器 client-v1 — 软件模拟原型主入口。
 
 交互方式:
    按住 F12     → 弹出圆形菜单
@@ -47,7 +47,7 @@ class AppController:
 
     def _print_banner(self):
         print("=" * 50)
-        print("  蓝牙体感控制器 v1 — 软件模拟原型")
+        print("  蓝牙体感控制器 client-v1 — 软件模拟原型")
         print("=" * 50)
         print("  ⌨️  按住 F12   → 弹出圆形菜单")
         print("  🖱️  移动鼠标    → 连线选择扇区")

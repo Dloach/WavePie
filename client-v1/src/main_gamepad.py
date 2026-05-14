@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""蓝牙体感控制器 v1 — PS5 手柄模拟入口。
+"""蓝牙体感控制器 client-v1 — PS5 手柄模拟入口。
 
 用 PS5 手柄左摇杆控制径向菜单选择：
   Cross 键按住 → 弹出菜单
@@ -8,7 +8,7 @@
   Esc 键       → 取消 / 退出
 
 启动方式:
-    cd v1; python -m src.main_gamepad
+    cd client-v1; python -m src.main_gamepad
 """
 
 import sys
@@ -56,7 +56,7 @@ class AppController:
 
     def _print_banner(self):
         print("=" * 50)
-        print("  蓝牙体感控制器 v1 — PS5 手柄模式")
+        print("  蓝牙体感控制器 client-v1 — PS5 手柄模式")
         print("=" * 50)
         print("  🎮  L2 扳机按住  → 弹出圆形菜单")
         print("  🕹️  左摇杆方向   → 选择扇区")

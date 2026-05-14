@@ -126,7 +126,7 @@ project-root/
 │   ├── 2024-01-15_v1-overlay-done.md
 │   └── ...                     # 每次关键操作留一条日志
 │
-├── v1/                         # 版本 1：软件模拟原型
+├── client-v1/                  # PC 客户端 — 软件模拟原型
 │   ├── README.md               # 该版本的说明、启动方式
 │   └── src/                    # 源码（按技术栈组织）
 │
@@ -143,7 +143,7 @@ project-root/
 
 | 规则 | 说明 |
 |------|------|
-| **每个版本一个独立子目录** | `v1/` `v2/` …，彼此独立，不互相依赖 |
+| **每个版本一个独立子目录** | `client-v1/` `client-v2/` …，彼此独立，不互相依赖 |
 | **每版本有自己的 README** | 说明该版本的用途、启动方式、依赖、已知限制 |
 | **向下兼容不做强制要求** | 每个版本是阶段快照，不是升级包 |
 | **公共文档在根目录** | `DEVELOPMENT_FRAMEWORK.md` 对所有版本生效 |
@@ -625,8 +625,8 @@ BLE GATT Service:
 | TypeScript (UI) | 标准 TS 约定 | `camelCase` 变量, `PascalCase` 组件 |
 | 固件 C/C++ | 标准 Arduino 风格 | `snake_case` 函数, `kConst` 常量 |
 | 配置文件键 | 小写蛇形 | `input.provider`, `gesture.sensitivity` |
-| Git 分支 | `vX/feature-name` | `v1/overlay-ui` |
-| 提交信息 | 中文简短说明 | `v1: 完成鼠标输入提供层` |
+| Git 分支 | `feature/name` | `client-v1/overlay-ui` |
+| 提交信息 | 中文简短说明 | `client-v1: 完成鼠标输入提供层` |
 
 ### 7.3 文件结构约定
 

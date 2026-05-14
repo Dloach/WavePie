@@ -70,7 +70,7 @@ v1（软件模拟原型）+ firmware（固件）
   SESSION_STATE.md          (~80行)
   HARDWARE_SHOPPING_LIST.md (~200行)
 
-v1/ 软件模拟:
+client-v1/ 软件模拟:
   ~15 个源文件，约 2000 行代码
   main.py, main_gamepad.py, overlay.py, gamepad.py
   actions.py, mapper.py, engine.py, protocol.py, config.py

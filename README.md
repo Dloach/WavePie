@@ -17,7 +17,7 @@ WavePie is a handheld Bluetooth controller that lets you control your computer t
 ## Project Structure
 
 ```
-├── v1/                  # Software prototype (mouse + keyboard simulation)
+├── client-v1/           # PC client — software prototype
 │   ├── src/             # Python PC-side application
 │   ├── config.yaml      # Button mappings, menu items, gesture params
 │   └── tools/           # Diagnostic tools
@@ -47,7 +47,7 @@ WavePie is a handheld Bluetooth controller that lets you control your computer t
 ## Quick Start (Software Prototype)
 
 ```bash
-cd v1
+cd client-v1
 pip install -r requirements.txt
 python -m src.main          # Keyboard mode (F12)
 python -m src.main_gamepad  # Gamepad mode (L2 trigger)

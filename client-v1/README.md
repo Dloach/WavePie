@@ -9,7 +9,7 @@
 ## 启动方式
 
 ```bash
-cd v1
+cd client-v1
 pip install -r requirements.txt
 python -m src.main          # F12 键盘版
 python -m src.main_gamepad  # 手柄版（同时支持F12备用）
@@ -52,7 +52,7 @@ python -m src.main_gamepad  # 手柄版（同时支持F12备用）
 ## 项目文件结构
 
 ```
-v1/
+client-v1/
 ├── config.yaml              # 菜单项/按键映射/灵敏度配置
 ├── src/
 │   ├── main.py              # 键盘版入口（F12）
@@ -78,7 +78,7 @@ v1/
 ## 模块结构
 
 ```
-v1/
+client-v1/
 ├── config.yaml              # 用户配置（按键映射、菜单项、灵敏度）
 ├── requirements.txt
 ├── src/

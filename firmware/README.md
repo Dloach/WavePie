@@ -55,5 +55,5 @@ GPIO 7                ── 蜂鸣器(+) ── GND
 ## PC 端连接
 
 ```bash
-cd v1 && python3 -m src.main
+cd client-v1 && python3 -m src.main
 ```

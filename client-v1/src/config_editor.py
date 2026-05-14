@@ -584,27 +584,24 @@ class ConfigEditor:
             bg=CARD, fg=ACCENT, width=2,
         ).pack(side=tk.LEFT)
 
-        # 标签
+        # 标签输入框
         label_var = tk.StringVar(value=item.label)
-        tk.Label(
-            row, text="标签:", font=("Segoe UI", 9),
-            bg=CARD, fg=DIM,
-        ).pack(side=tk.LEFT)
         label_entry = tk.Entry(
             row, textvariable=label_var, width=14,
             bg=INPUT_BG, fg=FG, bd=0, font=("Segoe UI", 10),
         )
-        label_entry.pack(side=tk.LEFT, padx=(2, 8), ipady=2)
+        label_entry.pack(side=tk.LEFT, padx=(0, 6), ipady=2)
 
-        # 命令类型
-        tk.Label(
-            row, text="类型:", font=("Segoe UI", 9),
-            bg=CARD, fg=DIM,
-        ).pack(side=tk.LEFT)
-
+        # 命令类型下拉（先打包，获得固有宽度）
         type_var = tk.StringVar(value=item.action_type)
+        type_combo = ttk.Combobox(
+            row, textvariable=type_var,
+            values=["log", "key_combo", "macro", "script"],
+            width=10, state="readonly",
+        )
+        type_combo.pack(side=tk.LEFT)
 
-        # 参数面板（嵌入在同一行的扩展区域）
+        # 参数面板（后打包，expand 占满剩余空间）
         param_frame = tk.Frame(row, bg=BG)
         param_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
 
@@ -613,34 +610,24 @@ class ConfigEditor:
             action_type=item.action_type,
             payload=item.action_payload,
         )
-        action_param.pack(fill=tk.X, expand=True)
+        action_param.pack(fill=tk.X)
 
         # 类型切换时重建参数面板
-        def make_on_type_change(ap=action_param, tf=param_frame):
-            def on_type_change(*args):
-                new_type = type_var.get()
-                old_payload = ap.get_payload()
-                # 清空并重建
-                for w in tf.winfo_children():
-                    w.destroy()
-                new_ap = ActionParamFrame(
-                    tf, action_type=new_type, payload=old_payload,
-                )
-                new_ap.pack(fill=tk.X, expand=True)
-                # 替换引用
-                for i, md in enumerate(self._menu_widgets):
-                    if md["idx"] == idx:
-                        self._menu_widgets[i]["param"] = new_ap
-                        break
-            return on_type_change
+        def rebuild_param(ap=action_param, tf=param_frame):
+            new_type = type_var.get()
+            old_payload = ap.get_payload()
+            for w in tf.winfo_children():
+                w.destroy()
+            new_ap = ActionParamFrame(
+                tf, action_type=new_type, payload=old_payload,
+            )
+            new_ap.pack(fill=tk.X)
+            for i, md in enumerate(self._menu_widgets):
+                if md["idx"] == idx:
+                    self._menu_widgets[i]["param"] = new_ap
+                    break
 
-        type_combo = ttk.Combobox(
-            row, textvariable=type_var,
-            values=["log", "key_combo", "macro", "script"],
-            width=10, state="readonly",
-        )
-        type_combo.pack(side=tk.LEFT, padx=(2, 0))
-        type_combo.bind("<<ComboboxSelected>>", make_on_type_change(action_param, param_frame))
+        type_combo.bind("<<ComboboxSelected>>", lambda e: rebuild_param())
 
         self._menu_widgets.append({
             "idx": idx,

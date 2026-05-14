@@ -474,6 +474,9 @@ class ConfigEditor:
         self.root.minsize(720, 480)
         self.root.transient(master) if master else None
 
+        # ESC 不关闭窗口
+        self.root.bind("<Escape>", lambda e: None)
+
         self._build_ui()
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -922,13 +925,36 @@ class ConfigEditor:
                     return
 
             save_config(self.config, self._config_path)
-            messagebox.showinfo("已保存", f"配置已保存到:\n{self._config_path}")
             # 通知 app 直接更新内存中的配置
             if self._on_save_callback:
                 self._on_save_callback(self.config)
 
+            # 自动消失的 toast
+            self._toast("✅ 已保存")
+
         except Exception as e:
             messagebox.showerror("保存失败", str(e))
+
+    def _toast(self, message: str, duration_ms: int = 1200):
+        """显示一个自动消失的提示（不打断用户操作）。"""
+        toast = tk.Toplevel(self.root)
+        toast.overrideredirect(True)
+        toast.attributes("-topmost", True)
+        toast.configure(bg="#2D2D44")
+
+        tk.Label(
+            toast, text=message,
+            font=("Segoe UI", 12), bg="#2D2D44", fg="#FFFFFF",
+            padx=24, pady=12,
+        ).pack()
+
+        toast.update_idletasks()
+        pw, ph = self.root.winfo_width(), self.root.winfo_height()
+        px, py = self.root.winfo_x(), self.root.winfo_y()
+        tw, th = toast.winfo_width(), toast.winfo_height()
+        toast.geometry(f"+{px + (pw - tw) // 2}+{py + ph - th - 40}")
+
+        toast.after(duration_ms, toast.destroy)
 
     def _on_close(self):
         self.root.destroy()

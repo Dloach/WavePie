@@ -92,6 +92,9 @@ class TrayApp:
             "WavePie — 蓝牙体感控制器",
             menu=self._build_menu(),
         )
+        # 双击打开设置
+        if self._on_settings:
+            icon.on_activate = self._settings_clicked
         self._icon = icon
         icon.run()
 

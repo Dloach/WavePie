@@ -113,16 +113,27 @@ class WavePieApp:
     # ── 设置窗口 ──
 
     def _open_settings(self):
+        """从托盘线程安全地打开设置窗口（调度到主线程）。"""
+        self.ui.root.after(0, self._open_settings_impl)
+
+    def _open_settings_impl(self):
+        """在主线程上创建配置编辑器（Toplevel 而非 Tk）。"""
         if self._config_editor is not None:
             try:
                 self._config_editor.root.lift()
                 return
             except Exception:
                 self._config_editor = None
-        editor = ConfigEditor(self._config_path)
+        editor = ConfigEditor(
+            self._config_path,
+            master=self.ui.root,
+            on_close=self._on_settings_closed,
+        )
         self._config_editor = editor
-        editor.run()
-        # 窗口关闭后重载配置
+
+    def _on_settings_closed(self):
+        """配置编辑器关闭后重载配置。"""
+        self._config_editor = None
         self._reload_config()
 
     def _reload_config(self):

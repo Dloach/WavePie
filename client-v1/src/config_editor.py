@@ -432,18 +432,24 @@ class ActionParamFrame(tk.Frame):
 class ConfigEditor:
     """配置编辑器主窗口。"""
 
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str = None, master: tk.Tk = None,
+                 on_close: callable = None):
         self._config_path = config_path or os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "config.yaml",
         )
+        self._on_close_callback = on_close
         self.config: AppConfig = load_config(self._config_path)
 
-        self.root = tk.Tk()
+        if master:
+            self.root = tk.Toplevel(master)
+        else:
+            self.root = tk.Tk()
         self.root.title("WavePie 配置编辑器")
         self.root.geometry("920x620")
         self.root.configure(bg=BG)
         self.root.minsize(720, 480)
+        self.root.transient(master) if master else None
 
         self._build_ui()
 
@@ -900,11 +906,10 @@ class ConfigEditor:
 
     def _on_close(self):
         self.root.destroy()
-
-    def run(self):
-        self.root.mainloop()
+        if self._on_close_callback:
+            self._on_close_callback()
 
 
 if __name__ == "__main__":
     editor = ConfigEditor()
-    editor.run()
+    editor.root.mainloop()

@@ -1,0 +1,9 @@
+# 蓝牙体感控制器 v1 — 软件模拟原型
+#
+# Usage:
+#   cd v1 && pip install -r requirements.txt
+#   python -m src.main
+
+pyyaml>=6.0
+pynput>=1.8
+pygame>=2.6

@@ -1,0 +1,128 @@
+# v1 配置 — 蓝牙体感控制器（软件模拟原型）
+# 所有映射关系在这里配置，不改代码
+
+input:
+  provider: "mouse"
+
+  mouse:
+    sensitivity: 1.0
+    # 模拟按键 → button_id 映射
+    button_map:
+      main_button: "<Button-1>"      # 左键 → button_id=0（主按钮：触发 Overlay）
+      aux_buttons:
+        "<Button-3>": 1              # 右键 → button_id=1（直接动作）
+        "<Key-F1>": 2                # F1   → button_id=2
+        "<Key-F2>": 3                # F2   → button_id=3
+    scroll_axis: "<MouseWheel>"      # 滚轮事件
+
+gesture:
+  dead_zone: 0.05       # 死区（归一化），避免微抖误触
+  sensitivity: 1.2      # 灵敏度倍数
+  acceleration: true     # 启用加速：摆得快 = 光标移动更大
+
+buttons:
+  # 主按钮：走 Overlay 选择路径
+  - button_id: 0
+    route: overlay
+    label: "主按钮"
+    menu_items:
+      - id: copy
+        label: "复制"
+        icon: "📋"
+        action_type: log
+        action_payload: "复制 → ctrl+c"
+      - id: paste
+        label: "粘贴"
+        icon: "📄"
+        action_type: log
+        action_payload: "粘贴 → ctrl+v"
+      - id: screenshot
+        label: "截图"
+        icon: "📷"
+        action_type: log
+        action_payload: "截图 → win+shift+s"
+      - id: undo
+        label: "撤销"
+        icon: "↩️"
+        action_type: log
+        action_payload: "撤销 → ctrl+z"
+      - id: lock
+        label: "锁定"
+        icon: "🔒"
+        action_type: log
+        action_payload: "锁定 → win+l"
+      - id: search
+        label: "搜索"
+        icon: "🔍"
+        action_type: log
+        action_payload: "搜索 → ctrl+f"
+      - id: save
+        label: "保存"
+        icon: "💾"
+        action_type: log
+        action_payload: "保存 → ctrl+s"
+      - id: close
+        label: "关闭"
+        icon: "❌"
+        action_type: log
+        action_payload: "关闭 → alt+f4"
+      - id: tab_new
+        label: "新建标签"
+        icon: "📑"
+        action_type: log
+        action_payload: "新建标签 → ctrl+t"
+      - id: tab_close
+        label: "关闭标签"
+        icon: "🗑️"
+        action_type: log
+        action_payload: "关闭标签 → ctrl+w"
+      - id: emoji
+        label: "表情"
+        icon: "😊"
+        action_type: log
+        action_payload: "表情 → win+."
+      - id: taskman
+        label: "任务管理器"
+        icon: "⚡"
+        action_type: log
+        action_payload: "任务管理器 → ctrl+shift+esc"
+
+  # 副键：直接执行
+  - button_id: 1
+    route: direct
+    label: "右键→截图"
+    action_type: key_combo
+    action_payload: "win+shift+s"
+
+  - button_id: 2
+    route: direct
+    label: "F1→粘贴 Markdown"
+    action_type: macro
+    action_payload: "paste_markdown"
+
+  - button_id: 3
+    route: direct
+    label: "F2→音量静音"
+    action_type: key_combo
+    action_payload: "volume_mute"
+
+scroll:
+  up:
+    action_type: key_combo
+    action_payload: "volume_up"
+  down:
+    action_type: key_combo
+    action_payload: "volume_down"
+
+# 反馈规则（v1 仅日志记录，真实硬件阶段联真实设备）
+feedback_rules:
+  on_connect:    { led_color: green,  led_pattern: solid }
+  on_action_ok:  { led_color: green,  led_pattern: slow_blink }
+  on_action_fail: { led_color: red,   led_pattern: fast_blink, buzzer: true }
+
+ui:
+  overlay_opacity: 0.85
+  font_size: 14
+  item_height: 40
+  item_padding: 10
+  highlight_color: "#4A90D9"

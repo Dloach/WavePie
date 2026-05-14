@@ -572,6 +572,107 @@ class ActionParamFrame(tk.Frame):
 
 
 # ============================================================
+# 手柄信号实时检测对话框
+# ============================================================
+
+class GamepadMonitor:
+    """实时显示手柄所有按键的按下状态。"""
+
+    def __init__(self, parent):
+        self._running = True
+
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("🎮 手柄信号检测")
+        self.dialog.geometry("400x420")
+        self.dialog.configure(bg=BG)
+        self.dialog.resizable(False, False)
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+
+        tk.Label(
+            self.dialog, text="手柄按键实时状态（按下按钮看变化）",
+            font=("Segoe UI", 12, "bold"), bg=BG, fg=FG,
+        ).pack(pady=(16, 4))
+
+        self._status_var = tk.StringVar(value="正在连接手柄…")
+        tk.Label(
+            self.dialog, textvariable=self._status_var,
+            font=("Segoe UI", 10), bg=BG, fg=DIM,
+        ).pack()
+
+        # 按键状态网格
+        self._btn_labels = []
+        grid = tk.Frame(self.dialog, bg=BG)
+        grid.pack(pady=12, padx=20)
+
+        for i in range(16):
+            lbl = tk.Label(
+                grid, text=f"{i}", width=4,
+                font=("Consolas", 11, "bold"),
+                bg=CARD, fg=DIM, bd=1, relief=tk.RIDGE,
+            )
+            lbl.grid(row=i // 4, column=i % 4, padx=4, pady=4, ipady=4)
+            self._btn_labels.append(lbl)
+
+        tk.Button(
+            self.dialog, text="关闭", font=("Segoe UI", 10),
+            bg=ACCENT, fg="white", bd=0, padx=20, pady=4,
+            cursor="hand2", command=self._close,
+        ).pack(pady=8)
+
+        self.dialog.protocol("WM_DELETE_WINDOW", self._close)
+        self._start_polling()
+
+    def _start_polling(self):
+        import threading
+        t = threading.Thread(target=self._poll_loop, daemon=True)
+        t.start()
+
+    def _poll_loop(self):
+        import pygame
+        import time
+        try:
+            pygame.init()
+            pygame.joystick.init()
+            count = pygame.joystick.get_count()
+            if count == 0:
+                self._status_var.set("❌ 未检测到手柄")
+                return
+
+            j = pygame.joystick.Joystick(0)
+            j.init()
+            num_btns = j.get_numbuttons()
+            self._status_var.set(f"✅ 已连接: {j.get_name()}  ({num_btns} 个按键)")
+
+            while self._running:
+                pygame.event.pump()
+                for k in range(min(num_btns, 16)):
+                    pressed = j.get_button(k)
+                    if k < len(self._btn_labels):
+                        lbl = self._btn_labels[k]
+                        if pressed:
+                            self.dialog.after(
+                                0, lambda l=lbl, k=k: l.configure(
+                                    bg="#4A90D9", fg="white",
+                                    text=f"● {k}"))
+                        else:
+                            self.dialog.after(
+                                0, lambda l=lbl, k=k: l.configure(
+                                    bg=CARD, fg=DIM,
+                                    text=f"{k}"))
+                time.sleep(0.05)
+        except Exception as e:
+            self._status_var.set(f"❌ 错误: {e}")
+
+    def _close(self):
+        self._running = False
+        try:
+            self.dialog.destroy()
+        except Exception:
+            pass
+
+
+# ============================================================
 # 配置编辑器主窗口
 # ============================================================
 
@@ -814,10 +915,18 @@ class ConfigEditor:
         frame = tk.Frame(self._content, bg=BG)
         frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
 
+        header = tk.Frame(frame, bg=BG)
+        header.pack(fill=tk.X, anchor="nw")
         tk.Label(
-            frame, text="直接动作（手柄按键一键触发）",
+            header, text="直接动作（手柄按键一键触发）",
             font=("Segoe UI", 14, "bold"), bg=BG, fg=FG,
-        ).pack(anchor="nw")
+        ).pack(side=tk.LEFT)
+        tk.Button(
+            header, text="🔄 手柄测试", font=("Segoe UI", 8),
+            bg=ACCENT, fg="white", bd=0, padx=8, pady=2,
+            cursor="hand2",
+            command=lambda: GamepadMonitor(self.root),
+        ).pack(side=tk.LEFT, padx=(12, 0))
 
         num_btns = self._get_gamepad_buttons()
         if num_btns == 0:

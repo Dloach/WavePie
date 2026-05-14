@@ -17,6 +17,7 @@
 - [x] 配置编辑器 GUI（tkinter 可视化编辑菜单项/按键/滚轮）
 - [x] 统一入口 app.py（F12 + 手柄 + 托盘合一）
 - [x] PyInstaller 打包为单文件 exe（38MB，零安装零残留）
+- [x] 默认配置改为真正的 key_combo 快捷键（不再只是 log）
 
 ### 框架 & 文档
 - [x] `DEVELOPMENT_FRAMEWORK.md` — 宪法级开发框架

@@ -929,8 +929,9 @@ class ConfigEditor:
             if self._on_save_callback:
                 self._on_save_callback(self.config)
 
-            # 自动消失的 toast
+            # 自动消失的 toast 后关闭窗口
             self._toast("✅ 已保存")
+            self.root.after(400, self._on_close)
 
         except Exception as e:
             messagebox.showerror("保存失败", str(e))

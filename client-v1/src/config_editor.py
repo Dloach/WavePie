@@ -455,12 +455,13 @@ class ConfigEditor:
     """配置编辑器主窗口。"""
 
     def __init__(self, config_path: str = None, master: tk.Tk = None,
-                 on_close: callable = None):
+                 on_close: callable = None, on_save: callable = None):
         self._config_path = config_path or os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "config.yaml",
         )
         self._on_close_callback = on_close
+        self._on_save_callback = on_save
         self.config: AppConfig = load_config(self._config_path)
 
         if master:
@@ -922,6 +923,9 @@ class ConfigEditor:
 
             save_config(self.config, self._config_path)
             messagebox.showinfo("已保存", f"配置已保存到:\n{self._config_path}")
+            # 通知 app 直接更新内存中的配置
+            if self._on_save_callback:
+                self._on_save_callback(self.config)
 
         except Exception as e:
             messagebox.showerror("保存失败", str(e))

@@ -128,11 +128,20 @@ class WavePieApp:
             self._config_path,
             master=self.ui.root,
             on_close=self._on_settings_closed,
+            on_save=self._on_config_saved,
         )
         self._config_editor = editor
 
+    def _on_config_saved(self, fresh_config):
+        """配置编辑器保存时直接更新内存中的配置，无需等关闭。"""
+        self.config = fresh_config
+        self.mapper = ActionMapper(self.config.buttons, self.config.scroll)
+        self.gesture = GestureEngine(self.config.gesture)
+        self._button_map = {b.button_id: b for b in self.config.buttons}
+        print("[App] 🔄 配置已热更新（内存）")
+
     def _on_settings_closed(self):
-        """配置编辑器关闭后重载配置。"""
+        """配置编辑器关闭后从文件重载（兜底）。"""
         self._config_editor = None
         self._reload_config()
 

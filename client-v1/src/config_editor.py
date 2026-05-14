@@ -96,11 +96,31 @@ class KeyRecorderDialog:
         """在后台线程启动 pynput 键盘监听。"""
         from pynput import keyboard
 
+        # 虚拟键码 → 键名（硬件键，不受 Ctrl/Shift 影响）
+        VK_MAP = {
+            0x30: '0', 0x31: '1', 0x32: '2', 0x33: '3', 0x34: '4',
+            0x35: '5', 0x36: '6', 0x37: '7', 0x38: '8', 0x39: '9',
+            0x41: 'a', 0x42: 'b', 0x43: 'c', 0x44: 'd', 0x45: 'e',
+            0x46: 'f', 0x47: 'g', 0x48: 'h', 0x49: 'i', 0x4A: 'j',
+            0x4B: 'k', 0x4C: 'l', 0x4D: 'm', 0x4E: 'n', 0x4F: 'o',
+            0x50: 'p', 0x51: 'q', 0x52: 'r', 0x53: 's', 0x54: 't',
+            0x55: 'u', 0x56: 'v', 0x57: 'w', 0x58: 'x', 0x59: 'y',
+            0x5A: 'z',
+            0x70: 'f1', 0x71: 'f2', 0x72: 'f3', 0x73: 'f4',
+            0x74: 'f5', 0x75: 'f6', 0x76: 'f7', 0x77: 'f8',
+            0x78: 'f9', 0x79: 'f10', 0x7A: 'f11', 0x7B: 'f12',
+            0x1B: 'esc', 0x09: 'tab', 0x20: 'space', 0x0D: 'enter',
+            0x08: 'backspace', 0x2E: 'delete', 0x24: 'home', 0x23: 'end',
+            0x21: 'pageup', 0x22: 'pagedown',
+            0x26: 'up', 0x28: 'down', 0x25: 'left', 0x27: 'right',
+            0x2D: 'insert', 0x13: 'pause', 0x2C: 'printscreen',
+        }
+
         def on_press(key):
             if not self._recording:
                 return
             try:
-                # 修饰键
+                # ── 修饰键 ──
                 if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
                     self._mods.add("ctrl")
                 elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r):
@@ -110,32 +130,34 @@ class KeyRecorderDialog:
                 elif key in (keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r):
                     self._mods.add("win")
                 else:
-                    # 主键
-                    if hasattr(key, 'char') and key.char:
+                    # ── 主键：用虚拟键码 vk 识别硬件键 ──
+                    vk = getattr(key, 'vk', None)
+                    if vk and vk in VK_MAP:
+                        self._main_key = VK_MAP[vk]
+                    elif hasattr(key, 'char') and key.char and key.char.isprintable():
+                        # 可打印字符（无 vk 或 vk 不在映射中时的后备）
                         self._main_key = key.char.lower()
                     else:
+                        # Key 枚举（F1、Space 等特殊键）
                         name = str(key).replace("Key.", "")
-                        # 标准化常用键名
-                        mapping = {
+                        name_map = {
                             "space": "space", "enter": "enter", "tab": "tab",
                             "backspace": "backspace", "escape": "esc",
                             "up": "up", "down": "down", "left": "left", "right": "right",
-                            "f1": "f1", "f2": "f2", "f3": "f3", "f4": "f4",
-                            "f5": "f5", "f6": "f6", "f7": "f7", "f8": "f8",
-                            "f9": "f9", "f10": "f10", "f11": "f11", "f12": "f12",
                             "delete": "delete", "home": "home", "end": "end",
                             "page_up": "pageup", "page_down": "pagedown",
                             "insert": "insert", "pause": "pause",
-                            "print_screen": "printscreen",
-                            "menu": "menu",
+                            "print_screen": "printscreen", "menu": "menu",
                         }
-                        self._main_key = mapping.get(name, name)
+                        self._main_key = name_map.get(name, name)
+                        # f1-f12 也在这里处理
+                        if name.startswith("f") and name[1:].isdigit():
+                            self._main_key = name
 
                 self._update_display()
-                # 如果已经有主键了，暂停录制
                 if self._main_key:
                     self._recording = False
-                    return False  # 停止 listener
+                    return False
             except Exception:
                 pass
 

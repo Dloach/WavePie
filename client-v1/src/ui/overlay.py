@@ -282,11 +282,13 @@ class OverlayUI:
         if self._state == "menu_open":
             idx = self._selected_idx
             def do_exec():
+                self.deactivate()
                 if 0 <= idx < len(self._menu_items):
                     item = self._menu_items[idx]
                     if self._on_execute:
-                        self._on_execute(item.action_type, item.action_payload)
-                self.deactivate()
+                        # 延迟 50ms 让焦点回到前一个窗口再发按键
+                        self.root.after(50, lambda: self._on_execute(
+                            item.action_type, item.action_payload))
             self.root.after(0, do_exec)
 
     def on_global_esc(self):

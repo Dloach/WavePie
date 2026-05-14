@@ -195,11 +195,24 @@ class WavePieApp:
         self._kb_listener.start()
         print("[App] ⌨️  F12 监听已启动")
 
+    def _on_gamepad_action(self, trigger: str):
+        """手柄直接动作：根据 trigger 查找命令并执行。"""
+        br = self.mapper.route_trigger(trigger)
+        if br and br.route == "direct":
+            try:
+                import asyncio
+                result = asyncio.run(
+                    self.executor.execute(br.action_type, br.action_payload))
+                status = "✅" if result["ok"] else "❌"
+                print(f"[🎮 {trigger}] {status}: {result['detail']}")
+            except Exception as e:
+                print(f"[🎮 {trigger}] ❌ {e}")
+
     def _start_gamepad(self):
         """尝试启动手柄（若无手柄则静默跳过）。"""
         try:
             from src.input.gamepad import GamepadProvider
-            gp = GamepadProvider(self.ui)
+            gp = GamepadProvider(self.ui, on_action=self._on_gamepad_action)
             if gp.connect():
                 self._gamepad = gp
                 gp._poll_loop = gp._poll_loop  # keep reference

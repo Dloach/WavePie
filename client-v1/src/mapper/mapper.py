@@ -56,6 +56,7 @@ class ActionMapper:
 
     def __init__(self, button_configs: list, scroll_config):
         self._buttons: dict[int, ButtonRoute] = {}
+        self._triggers: dict[str, ButtonRoute] = {}  # "gamepad:3" → ButtonRoute
         self._scroll: Optional[ScrollRoute] = None
         self._build(button_configs, scroll_config)
 
@@ -88,6 +89,8 @@ class ActionMapper:
                     for item in b.menu_items
                 ]
             self._buttons[br.button_id] = br
+            if b.trigger:
+                self._triggers[b.trigger] = br
 
         self._scroll = ScrollRoute(
             up_action_type=scroll_config.up_action_type,
@@ -99,6 +102,10 @@ class ActionMapper:
     def route_button(self, button_id: int) -> Optional[ButtonRoute]:
         """查询按钮的路由配置。返回 None 表示未配置。"""
         return self._buttons.get(button_id)
+
+    def route_trigger(self, trigger: str) -> Optional[ButtonRoute]:
+        """按触发键标识查询路由。例如 'gamepad:3' → ButtonRoute。"""
+        return self._triggers.get(trigger)
 
     def route_scroll(self, delta: int) -> Optional[tuple[str, str]]:
         """查询滚轮方向对应的动作 (type, payload)。"""

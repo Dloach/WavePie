@@ -17,14 +17,19 @@ L2_THRESHOLD = 0.5       # 扳机值 0(松开) ~ 1(按下)
 class GamepadProvider:
     """XInput 手柄输入源。"""
 
-    def __init__(self, overlay):
+    def __init__(self, overlay, on_action: callable = None):
+        """
+        on_action: 直接动作回调，接收 (action_type, action_payload)
+        """
         self._overlay = overlay
+        self._on_action = on_action
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._joystick = None
         self._connected = False
         self._last_sent_idx = -1
         self._l2_was_down = False
+        self._prev_buttons: list[bool] = []  # 上一帧的按键状态（边缘检测用）
 
     @property
     def is_connected(self) -> bool:
@@ -113,6 +118,21 @@ class GamepadProvider:
                     ny = stick_y / mag
                     angle = (-math.atan2(ny, nx) + math.pi / 2) % (2 * math.pi)
                     self._update_selection_by_angle(angle)
+
+                # ── 全局按键检测（直接动作触发）──
+                num_btns = j.get_numbuttons()
+                for k in range(num_btns):
+                    pressed = j.get_button(k)
+                    prev = (self._prev_buttons[k]
+                            if k < len(self._prev_buttons) else False)
+                    if pressed and not prev:
+                        # 按钮刚被按下
+                        trigger = f"gamepad:{k}"
+                        if self._on_action:
+                            self._overlay.root.after(
+                                0, lambda t=trigger: self._on_action(t))
+                # 更新上一帧状态
+                self._prev_buttons = [j.get_button(k) for k in range(num_btns)]
 
                 time.sleep(0.016)
             except Exception:

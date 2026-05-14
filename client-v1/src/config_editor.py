@@ -795,6 +795,21 @@ class ConfigEditor:
 
     # ── 直接动作 ──
 
+    def _get_gamepad_buttons(self) -> int:
+        """尝试连接手柄并返回按键数量；未检测到返回 0。"""
+        try:
+            import pygame
+            pygame.init()
+            pygame.joystick.init()
+            count = pygame.joystick.get_count()
+            if count == 0:
+                return 0
+            j = pygame.joystick.Joystick(0)
+            j.init()
+            return j.get_numbuttons()
+        except Exception:
+            return 0
+
     def _render_direct_actions(self):
         frame = tk.Frame(self._content, bg=BG)
         frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
@@ -804,10 +819,14 @@ class ConfigEditor:
             font=("Segoe UI", 14, "bold"), bg=BG, fg=FG,
         ).pack(anchor="nw")
 
-        tk.Label(
-            frame, text="先录制触发键，再设置要执行的命令",
-            font=("Segoe UI", 9), bg=BG, fg=DIM,
-        ).pack(anchor="nw", pady=(0, 12))
+        num_btns = self._get_gamepad_buttons()
+        if num_btns == 0:
+            tk.Label(
+                frame, text="⚠️ 未检测到手柄，连接手柄后刷新页面",
+                font=("Segoe UI", 9), bg=BG, fg="#FF6B6B",
+            ).pack(anchor="nw", pady=(0, 8))
+
+        btn_values = [f"gamepad:{i}" for i in range(num_btns)] if num_btns > 0 else []
 
         self._direct_widgets = []
         for b in self.config.buttons:
@@ -819,25 +838,22 @@ class ConfigEditor:
             row = tk.Frame(card, bg=CARD)
             row.pack(fill=tk.X, padx=10, pady=2)
 
-            # ── 触发键录制 ──
+            # ── 触发键选择 ──
             trigger_var = tk.StringVar(value=b.trigger)
-            trigger_label = tk.Label(
-                row,
-                text=f"🎮 {trigger_var.get()}" if trigger_var.get() else "🎮 录制触发键",
-                font=("Segoe UI", 9, "bold"), bg=ACCENT, fg="white",
-                padx=10, pady=3, cursor="hand2",
+            tk.Label(
+                row, text="🎮 按键:", font=("Segoe UI", 9, "bold"),
+                bg=CARD, fg=ACCENT,
+            ).pack(side=tk.LEFT)
+
+            trigger_combo = ttk.Combobox(
+                row, textvariable=trigger_var,
+                values=btn_values,
+                width=12, state="readonly" if btn_values else "disabled",
             )
-            trigger_label.pack(side=tk.LEFT, padx=(0, 8))
+            trigger_combo.pack(side=tk.LEFT, padx=(4, 8))
 
-            def make_record_click(tl=trigger_label, tv=trigger_var):
-                def record():
-                    result = GamepadTriggerRecorder(self.root).show()
-                    if result:
-                        tv.set(result)
-                        tl.configure(text=f"🎮 {result}")
-                return record
-
-            trigger_label.bind("<Button-1>", lambda e: make_record_click()())
+            if not btn_values:
+                trigger_combo.set("（无手柄）")
 
             # ── 命令类型 ──
             type_var = tk.StringVar(value=b.action_type)

@@ -831,9 +831,7 @@ class ConfigEditor:
 
             def make_record_click(tl=trigger_label, tv=trigger_var):
                 def record():
-                    result = GamepadTriggerRecorder(
-                        self.winfo_toplevel()
-                    ).show()
+                    result = GamepadTriggerRecorder(self.root).show()
                     if result:
                         tv.set(result)
                         tl.configure(text=f"🎮 {result}")

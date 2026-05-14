@@ -19,6 +19,15 @@ WavePie is a handheld Bluetooth controller that lets you control your computer t
 ```
 ├── client-v1/           # PC client — software prototype
 │   ├── src/             # Python PC-side application
+│   │   ├── app.py       # 🌟 统一入口（托盘 + F12 + 手柄）
+│   │   ├── tray.py      # 系统托盘图标
+│   │   ├── config_editor.py  # 配置编辑器 GUI
+│   │   ├── ui/          # 径向菜单 OverlayUI
+│   │   ├── input/       # 输入层 (mouse/gamepad/protocol)
+│   │   ├── mapper/      # ActionMapper 路由
+│   │   ├── gesture/     # 手势引擎
+│   │   ├── executor/    # 跨平台键盘模拟
+│   │   └── utils/       # YAML 配置加载
 │   ├── config.yaml      # Button mappings, menu items, gesture params
 │   └── tools/           # Diagnostic tools
 ├── firmware/             # ESP32 firmware (Arduino)
@@ -32,26 +41,31 @@ WavePie is a handheld Bluetooth controller that lets you control your computer t
 ├── DEVELOPMENT_FRAMEWORK.md
 ├── DECISION_LOG.md
 ├── SESSION_STATE.md
-└── HARDWARE_SHOPPING_LIST.md
+├── HARDWARE_SHOPPING_LIST.md
+└── WavePie.exe          # 🚀 打包后的单文件 exe（拖桌面即用）
 ```
 
 ## Current Status
 
 | Component | Status |
 |-----------|--------|
-| **v1 — Software Prototype** | ✅ Complete — F12 + gamepad modes, 12-item radial menu, scroll volume |
-| **Firmware — ESP32 + MPU6050** | ✅ Written — waiting for hardware to arrive for testing |
-| **Hardware** | ⏳ BOM ready (~¥60-80), parts not yet ordered |
-| **PC BLE Integration (v2)** | ⬜ Not started |
+| **client-v1 — PC Client** | ✅ F12 + gamepad, 托盘图标, 配置编辑器 GUI |
+| **Packaged EXE** | ✅ WavePie.exe — 零安装，删文件即卸载 |
+| **Firmware — ESP32 + MPU6050** | ✅ Written — waiting for hardware |
+| **Hardware** | ⏳ BOM ready (~¥60-80), not yet ordered |
+| **PC BLE Integration** | ⬜ Not started (waiting for hardware) |
 
-## Quick Start (Software Prototype)
+## Quick Start
 
+### 开发模式
 ```bash
 cd client-v1
 pip install -r requirements.txt
-python -m src.main          # Keyboard mode (F12)
-python -m src.main_gamepad  # Gamepad mode (L2 trigger)
+python -m src.app            # 🌟 统一入口（托盘 + F12 + 手柄）
 ```
+
+### 打包运行
+直接双击 `WavePie.exe` — 启动后缩到系统托盘，F12 弹出菜单。
 
 ## License
 

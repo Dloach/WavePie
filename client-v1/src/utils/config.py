@@ -183,3 +183,79 @@ def load_config(path: str = None) -> AppConfig:
     )
 
     return cfg
+
+
+# ============================================================
+# 保存器
+# ============================================================
+
+def save_config(cfg: AppConfig, path: str) -> None:
+    """将 AppConfig 保存回 YAML 文件。"""
+
+    # 构建 buttons list
+    buttons_raw = []
+    for b in cfg.buttons:
+        bd = {
+            "button_id": b.button_id,
+            "route": b.route,
+            "label": b.label,
+        }
+        if b.route == "overlay" and b.menu_items:
+            bd["menu_items"] = [
+                {
+                    "id": item.id,
+                    "label": item.label,
+                    "icon": item.icon,
+                    "action_type": item.action_type,
+                    "action_payload": item.action_payload,
+                }
+                for item in b.menu_items
+            ]
+        else:
+            bd["action_type"] = b.action_type
+            bd["action_payload"] = b.action_payload
+        if b.long_press_action_type:
+            bd["long_press_action_type"] = b.long_press_action_type
+            bd["long_press_payload"] = b.long_press_payload
+        buttons_raw.append(bd)
+
+    raw = {
+        "input": {
+            "provider": cfg.input_provider,
+            "mouse": {
+                "sensitivity": cfg.mouse.sensitivity,
+                "button_map": {
+                    "main_button": cfg.mouse.button_map.main_button,
+                    "aux_buttons": cfg.mouse.button_map.aux_buttons,
+                },
+            },
+        },
+        "gesture": {
+            "dead_zone": cfg.gesture.dead_zone,
+            "sensitivity": cfg.gesture.sensitivity,
+            "acceleration": cfg.gesture.acceleration,
+        },
+        "buttons": buttons_raw,
+        "scroll": {
+            "up": {
+                "action_type": cfg.scroll.up_action_type,
+                "action_payload": cfg.scroll.up_payload,
+            },
+            "down": {
+                "action_type": cfg.scroll.down_action_type,
+                "action_payload": cfg.scroll.down_payload,
+            },
+        },
+        "feedback_rules": cfg.feedback_rules,
+        "ui": {
+            "overlay_opacity": cfg.ui.overlay_opacity,
+            "font_size": cfg.ui.font_size,
+            "item_height": cfg.ui.item_height,
+            "item_padding": cfg.ui.item_padding,
+            "highlight_color": cfg.ui.highlight_color,
+        },
+    }
+
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.dump(raw, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    print(f"[Config] ✅ 已保存: {path}")

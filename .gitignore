@@ -22,3 +22,10 @@ Thumbs.db
 
 # Arduino 编译输出
 firmware/build/
+
+# PyInstaller 构建产物
+*.spec
+WavePie.exe
+
+# 根目录配置（已跟踪 client-v1/config.yaml）
+/config.yaml

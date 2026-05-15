@@ -168,8 +168,9 @@ class WavePieV2:
             on_save=self._on_config_saved,
         )
 
-    def _on_config_saved(self, fresh_config):
-        self.config = fresh_config
+    def _on_config_saved(self, _fresh_config):
+        # 重新加载配置（确保 AppConfig 对象正确）
+        self.config = load_config(self._config_path)
         print("[App] 🔄 配置已更新")
 
     def _exit_app(self):

@@ -69,8 +69,10 @@ class AimEngine:
         smooth = self._cfg.smoothing
 
         # 倾斜偏移量
-        dx_raw = pitch - self._ref_pitch  # pitch → X
-        dy_raw = -(roll - self._ref_roll)  # roll → Y (正roll=左倾→向上)
+        # roll(左右倾) → X, pitch(前后倾) → Y
+        # 正roll=左倾→左移(负X), 正pitch=前倾→上移(负Y)
+        dx_raw = -(roll - self._ref_roll)
+        dy_raw = -(pitch - self._ref_pitch)
 
         # 死区
         if abs(dx_raw) < dz:
@@ -88,15 +90,11 @@ class AimEngine:
         self._x += self._vx * dt
         self._y += self._vy * dt
 
-        # 约束到圆环内
+        # 约束到外径以内（内径不限，圆心也能选扇区）
         dist = math.hypot(self._x, self._y)
         if dist > self._visible_r:
             self._x = self._x / dist * self._visible_r
             self._y = self._y / dist * self._visible_r
-        elif dist < self._center_r and dist > 0:
-            # 拉到内径边缘
-            self._x = self._x / dist * self._center_r
-            self._y = self._y / dist * self._center_r
 
     def on_release(self) -> int:
         """扳机松开：返回当前高亮扇区索引，重置。"""

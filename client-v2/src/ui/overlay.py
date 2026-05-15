@@ -164,14 +164,14 @@ class OverlayUI:
     # ── 内部 ──
 
     def _update_sector(self):
-        """根据准星位置计算高亮扇区。"""
+        """根据准星位置计算高亮扇区（准星在外径内任意位置皆可）。"""
         if self._n <= 1:
             self._selected_idx = 0 if self._n == 1 else -1
             return
         dx = self._sight_x
         dy = self._sight_y
         dist = math.hypot(dx, dy)
-        if dist < self._center_r or dist > self._visible_r:
+        if dist > self._visible_r or dist < 1:
             self._selected_idx = -1
             return
         angle = math.atan2(dy, dx)

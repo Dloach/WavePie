@@ -9,6 +9,7 @@
 import sys
 import os
 import asyncio
+import time
 import tkinter as tk
 import threading
 
@@ -17,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.utils.config import load_config
 from src.mapper.mapper import ActionMapper, RouteAction
 from src.gesture.engine import GestureEngine
-from src.input.protocol import EventType
+from src.input.protocol import EventType, InputEvent
 from src.executor.actions import ActionExecutor
 from src.ui.overlay import OverlayUI
 from src.tray import TrayApp
@@ -173,6 +174,7 @@ class WavePieApp:
         try:
             from src.input.ble import BLEMotionInputProvider
             ble = BLEMotionInputProvider(self.config)
+            self._ble_provider = ble
 
             def run_loop():
                 loop = asyncio.new_event_loop()
@@ -188,20 +190,39 @@ class WavePieApp:
         except Exception as e:
             print(f"[App] 📡 BLE 初始化失败: {e}")
 
+    def _ble_poll_motion(self):
+        """主线程轮询最新 IMU 数据（30fps），比 per-event 更流畅。"""
+        if hasattr(self, '_ble_provider') and self._ble_provider:
+            p = self._ble_provider
+            evt = InputEvent(EventType.MOTION, time.monotonic(),
+                             roll=p.latest_roll, pitch=p.latest_pitch,
+                             yaw=p.latest_yaw)
+            self._ble_on_motion(evt)
+        self.ui.root.after(33, self._ble_poll_motion)  # ~30fps
+
     async def _ble_event_loop(self, ble):
         """BLE 事件循环：读事件 → 路由到 UI 或直接动作。"""
         await ble.start()
+        # 启动主线程轮询
+        self.ui.root.after(33, self._ble_poll_motion)
         async for evt in ble.read_events():
-            if evt.type == EventType.MOTION:
-                self.ui.root.after(0, self._ble_on_motion, evt)
-            elif evt.type == EventType.BUTTON_DOWN:
+            if evt.type == EventType.BUTTON_DOWN:
                 if evt.button_id == 0:
+                    # 记录当前姿态为零点
+                    self.ui.root.after(0, self._ble_calibrate, evt)
                     self.ui.root.after(0, self.ui.on_trigger_press)
                 else:
                     self._do_trigger(f"gamepad:{evt.button_id}")
             elif evt.type == EventType.BUTTON_UP:
                 if evt.button_id == 0:
                     self.ui.root.after(0, self.ui.on_trigger_release)
+
+    def _ble_calibrate(self, evt):
+        """记录当前姿态为零点基准（菜单打开时调用）。"""
+        self._ble_ref_roll = evt.roll
+        self._ble_ref_pitch = evt.pitch
+        self._ble_ref_yaw = evt.yaw
+        print(f"[BLE] 📐 零点校准: r={evt.roll:.1f} p={evt.pitch:.1f}")
 
     def _ble_on_motion(self, evt):
         """BLE IMU 数据 → 二维角度 → 径向菜单扇区高亮。"""
@@ -212,25 +233,25 @@ class WavePieApp:
             return
 
         import math
-        # 传感器水平，小圆点左前：
-        #   X 轴（远端倾）→ pitch → 控制 12-6 点
-        #   Y 轴（左倾右倾）→ roll  → 控制 3-9 点
-        #   Z 轴（水平旋转）→ yaw   → 辅助横向
-        dx = evt.pitch * 0.8 + evt.yaw * 0.3   # 横向：pitch+Y辅助
-        dy = evt.roll                           # 纵向：roll
+        # 减去零点基准
+        if hasattr(self, '_ble_ref_roll'):
+            dx = (evt.pitch - self._ble_ref_pitch) + (evt.yaw - self._ble_ref_yaw) * 0.3
+            dy = evt.roll - self._ble_ref_roll
+        else:
+            dx = evt.pitch + evt.yaw * 0.3
+            dy = evt.roll
 
-        # 死区
-        dz = self.config.gesture.dead_zone * 30
-        if abs(dx) < dz: dx = 0.0
-        if abs(dy) < dz: dy = 0.0
-
+        # 小死区
+        if abs(dx) < 1.0: dx = 0.0
+        if abs(dy) < 1.0: dy = 0.0
         if dx == 0.0 and dy == 0.0:
             return
 
-        # atan2(dx, -dy): dx正→3点, dy正→6点(负dy使正dy→12点)
         angle = math.degrees(math.atan2(dx, -dy)) % 360
         sector = 360.0 / num
         idx = int((angle + sector / 2) / sector) % num
+        if idx != self.ui._selected_idx:
+            print(f"[BLE] angle={angle:.0f}°  sector={idx}")
         self.ui.select_sector(idx)
 
     # ── 输入源 ──
@@ -281,6 +302,7 @@ class WavePieApp:
         # 根据配置选择输入源
         if self.config.input_provider == "ble":
             self.ui.set_gamepad_mode(True)
+            self.ui.set_ble_mode(True)
             self._start_ble()
         else:
             self._start_gamepad()

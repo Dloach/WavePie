@@ -101,6 +101,10 @@ class BLEMotionInputProvider(InputProvider):
         self._event_queue: asyncio.Queue = asyncio.Queue(maxsize=256)
         self._feedback = BLEFeedback()
         self._device: Optional[object] = None
+        # 最新 IMU 数据（供主线程轮询）
+        self.latest_roll = 0.0
+        self.latest_pitch = 0.0
+        self.latest_yaw = 0.0
 
     # ── InputProvider 接口 ──
 
@@ -133,11 +137,19 @@ class BLEMotionInputProvider(InputProvider):
         self._client = client
         print(f"[BLE] ✅ 已连接: {device.address}")
 
-        # 3. 发现服务
-        for service in client.services:
-            if str(service.uuid).upper() == SERVICE_UUID.upper():
-                print(f"[BLE] ✅ 找到服务: {service.uuid}")
+        # 3. 等待服务发现
+        import asyncio
+        await asyncio.sleep(1.0)
+        found = False
+        for svc in client.services:
+            if str(svc.uuid).upper() == SERVICE_UUID.upper():
+                print(f"[BLE] ✅ 找到 FF00 服务")
+                found = True
                 break
+        if not found:
+            print(f"[BLE] ⚠️ 未找到 FF00 服务")
+            for svc in client.services:
+                print(f"[BLE]   服务: {svc.uuid}")
 
         # 4. 订阅按键通知
         def on_button(sender, data: bytearray):
@@ -164,6 +176,9 @@ class BLEMotionInputProvider(InputProvider):
         def on_imu(sender, data: bytearray):
             if len(data) >= 12:
                 roll, pitch, yaw = struct.unpack_from('<fff', data, 0)
+                self.latest_roll = roll
+                self.latest_pitch = pitch
+                self.latest_yaw = yaw
                 now = time.monotonic()
                 evt = InputEvent(
                     type=EventType.MOTION,

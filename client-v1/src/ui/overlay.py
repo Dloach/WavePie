@@ -57,6 +57,7 @@ class OverlayUI:
 
         self._activate_callback: Optional[Callable] = None
         self._gamepad_mode = False   # 手柄模式隐藏指针连线
+        self._ble_mode = False       # BLE 模式禁用鼠标覆盖
 
         # ── Canvas 对象 ID 缓存 ──
         self._sector_ids = []
@@ -183,6 +184,10 @@ class OverlayUI:
         """切换手柄模式：隐藏指针连线。"""
         self._gamepad_mode = enabled
 
+    def set_ble_mode(self, enabled: bool):
+        """切换 BLE 模式：禁用鼠标覆盖选择。"""
+        self._ble_mode = enabled
+
     def activate(self, button_id: int, items: list, screen_x: int, screen_y: int):
         if self._state == "menu_open":
             return
@@ -228,7 +233,7 @@ class OverlayUI:
     # ── 事件 ──
 
     def _on_motion(self, event: tk.Event):
-        if self._state != "menu_open" or self._n == 0:
+        if self._state != "menu_open" or self._n == 0 or self._ble_mode:
             return
 
         abs_x = event.x_root

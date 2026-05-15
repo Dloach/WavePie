@@ -1,0 +1,54 @@
+# WavePie V2 — 配置
+# BLE 唯一输入，无鼠标/键盘后备
+
+ble:
+  device_name: "BLE Gesture Ctrl"
+
+aim:
+  # 速率控制灵敏度：倾斜角度→准星速度
+  sensitivity: 3.0
+  # 死区：微小倾斜不触发移动
+  dead_zone: 1.0
+  # 平滑系数：0.0=无平滑，0.9=重度平滑
+  smoothing: 0.7
+
+menu:
+  items:
+    - label: "截图区域"
+      action_type: key_combo
+      action_payload: "win+shift+s"
+    - label: "截全屏"
+      action_type: key_combo
+      action_payload: "win+prtsc"
+    - label: "复制"
+      action_type: key_combo
+      action_payload: "ctrl+c"
+    - label: "粘贴"
+      action_type: key_combo
+      action_payload: "ctrl+v"
+    - label: "撤销"
+      action_type: key_combo
+      action_payload: "ctrl+z"
+    - label: "保存"
+      action_type: key_combo
+      action_payload: "ctrl+s"
+    - label: "音量+"
+      action_type: key
+      action_payload: "volume_up"
+    - label: "音量-"
+      action_type: key
+      action_payload: "volume_down"
+    - label: "静音"
+      action_type: key
+      action_payload: "volume_mute"
+    - label: "回车"
+      action_type: key
+      action_payload: "enter"
+    - label: "锁屏"
+      action_type: key_combo
+      action_payload: "win+l"
+    - label: "任务视图"
+      action_type: key_combo
+      action_payload: "ctrl+win+left"
+
+buttons: []

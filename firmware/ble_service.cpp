@@ -79,7 +79,7 @@ void BLEServiceManager::begin(const char* deviceName) {
 void BLEServiceManager::update() {
     if (_charFeedback && _charFeedback->getValue().length() >= 4) {
         auto val = _charFeedback->getValue();
-        memcpy(_feedback_buf, val.data(), min((size_t)4, val.length()));
+        memcpy(_feedback_buf, val.c_str(), min((size_t)4, val.length()));
         _feedback_pending = true;
         // 清空缓冲区，避免重复读取
         _charFeedback->setValue((uint8_t*)"\x00\x00\x00\x00", 4);

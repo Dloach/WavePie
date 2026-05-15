@@ -10,3 +10,4 @@ pygame>=2.6
 pystray>=0.19
 pillow>=9.0
 pyinstaller>=6.0
+bleak>=0.22

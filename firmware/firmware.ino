@@ -34,10 +34,10 @@
 // ── 引脚定义 ──
 constexpr int PIN_BTN_MAIN = 4;
 constexpr int PIN_BTN_AUX1 = 5;
-constexpr int PIN_BTN_AUX2 = 6;
-constexpr int PIN_LED_R    = 2;
-constexpr int PIN_LED_G    = 3;
-constexpr int PIN_BUZZER   = 7;
+constexpr int PIN_BTN_AUX2 = 15; // 不能用6/7/8/9/10/11(Falsh引脚)
+constexpr int PIN_LED_R    = 2;  // 板载 LED
+constexpr int PIN_LED_G    = 12; // 不能用 GPIO3(RXD0)，冲突串口
+constexpr int PIN_BUZZER   = 14; // 不能用6/7(Flash引脚)
 
 // ── 全局对象 ──
 BLEServiceManager  ble;

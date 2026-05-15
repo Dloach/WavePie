@@ -2,7 +2,9 @@
 # 所有映射关系在这里配置，不改代码
 
 input:
-  provider: "mouse"
+  # "mouse" = 键盘 F12 模拟
+  # "ble"   = ESP32 真实体感（需 BLEInputProvider）
+  provider: "ble"
 
   mouse:
     sensitivity: 1.0

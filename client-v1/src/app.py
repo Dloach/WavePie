@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.utils.config import load_config
 from src.mapper.mapper import ActionMapper, RouteAction
 from src.gesture.engine import GestureEngine
+from src.input.protocol import EventType
 from src.executor.actions import ActionExecutor
 from src.ui.overlay import OverlayUI
 from src.tray import TrayApp
@@ -165,6 +166,52 @@ class WavePieApp:
         self.ui.root.quit()
         os._exit(0)
 
+    # ── BLE 体感输入 ──
+
+    def _start_ble(self):
+        """在后台线程启动 BLE 输入源。"""
+        try:
+            from src.input.ble import BLEMotionInputProvider
+            ble = BLEMotionInputProvider(self.config)
+
+            def run_loop():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(self._ble_event_loop(ble))
+                except Exception as e:
+                    print(f"[BLE] ❌ {e}")
+
+            t = threading.Thread(target=run_loop, daemon=True)
+            t.start()
+            print("[App] 📡 BLE 体感已启动")
+        except Exception as e:
+            print(f"[App] 📡 BLE 初始化失败: {e}")
+
+    async def _ble_event_loop(self, ble):
+        """BLE 事件循环：读事件 → 路由到 UI 或直接动作。"""
+        await ble.start()
+        async for evt in ble.read_events():
+            if evt.type == EventType.MOTION:
+                self.ui.root.after(0, self._ble_on_motion, evt)
+            elif evt.type == EventType.BUTTON_DOWN:
+                if evt.button_id == 0:
+                    self.ui.root.after(0, self.ui.on_trigger_press)
+                else:
+                    self._do_trigger(f"gamepad:{evt.button_id}")
+            elif evt.type == EventType.BUTTON_UP:
+                if evt.button_id == 0:
+                    self.ui.root.after(0, self.ui.on_trigger_release)
+
+    def _ble_on_motion(self, evt):
+        """BLE IMU 数据 → 手势引擎 → 菜单扇区高亮。"""
+        if hasattr(self.ui, '_menu_items'):
+            num = len(self.ui._menu_items)
+            if num > 0:
+                out = self.gesture.process(
+                    evt.roll, evt.pitch, evt.velocity, num)
+                self.ui.select_sector(out.cursor_index)
+
     # ── 输入源 ──
 
     def _start_keyboard(self):
@@ -210,7 +257,12 @@ class WavePieApp:
 
     def start(self):
         self._start_keyboard()
-        self._start_gamepad()
+        # 根据配置选择输入源
+        if self.config.input_provider == "ble":
+            self.ui.set_gamepad_mode(True)
+            self._start_ble()
+        else:
+            self._start_gamepad()
         self.tray.start_background()
         self.ui.run()
 

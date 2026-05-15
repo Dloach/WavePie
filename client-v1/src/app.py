@@ -212,20 +212,22 @@ class WavePieApp:
             return
 
         import math
-        # roll（左右摆）→ X, pitch（前后倾）→ Y
-        dx = evt.roll
-        dy = evt.pitch
+        # 传感器水平，小圆点左前：
+        #   X 轴（远端倾）→ pitch → 控制 12-6 点
+        #   Y 轴（左倾右倾）→ roll  → 控制 3-9 点
+        #   Z 轴（水平旋转）→ yaw   → 辅助横向
+        dx = evt.pitch * 0.8 + evt.yaw * 0.3   # 横向：pitch+Y辅助
+        dy = evt.roll                           # 纵向：roll
 
         # 死区
         dz = self.config.gesture.dead_zone * 30
         if abs(dx) < dz: dx = 0.0
         if abs(dy) < dz: dy = 0.0
 
-        # 如果两个轴都死区，不切换
         if dx == 0.0 and dy == 0.0:
             return
 
-        # 计算方向角（度），12点钟方向=0°，顺时针递增
+        # atan2(dx, -dy): dx正→3点, dy正→6点(负dy使正dy→12点)
         angle = math.degrees(math.atan2(dx, -dy)) % 360
         sector = 360.0 / num
         idx = int((angle + sector / 2) / sector) % num

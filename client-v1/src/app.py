@@ -204,13 +204,32 @@ class WavePieApp:
                     self.ui.root.after(0, self.ui.on_trigger_release)
 
     def _ble_on_motion(self, evt):
-        """BLE IMU 数据 → 手势引擎 → 菜单扇区高亮。"""
-        if hasattr(self.ui, '_menu_items'):
-            num = len(self.ui._menu_items)
-            if num > 0:
-                out = self.gesture.process(
-                    evt.roll, evt.pitch, evt.velocity, num)
-                self.ui.select_sector(out.cursor_index)
+        """BLE IMU 数据 → 二维角度 → 径向菜单扇区高亮。"""
+        if not hasattr(self.ui, '_menu_items'):
+            return
+        num = len(self.ui._menu_items)
+        if num == 0:
+            return
+
+        import math
+        # roll（左右摆）→ X, pitch（前后倾）→ Y
+        dx = evt.roll
+        dy = evt.pitch
+
+        # 死区
+        dz = self.config.gesture.dead_zone * 30
+        if abs(dx) < dz: dx = 0.0
+        if abs(dy) < dz: dy = 0.0
+
+        # 如果两个轴都死区，不切换
+        if dx == 0.0 and dy == 0.0:
+            return
+
+        # 计算方向角（度），12点钟方向=0°，顺时针递增
+        angle = math.degrees(math.atan2(dx, -dy)) % 360
+        sector = 360.0 / num
+        idx = int((angle + sector / 2) / sector) % num
+        self.ui.select_sector(idx)
 
     # ── 输入源 ──
 

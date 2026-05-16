@@ -238,8 +238,7 @@ void core0_task(void* param) {
         bool released = !stable &&  prev_btn;
         prev_btn = stable;
 
-        if (pressed)  Serial.printf("[BTN] 按下\n");
-        if (released) Serial.printf("[BTN] 松开\n");
+
 
         // ── 状态机（独立于 IMU）──
         if (pressed && !locked) {
@@ -249,13 +248,11 @@ void core0_task(void* param) {
             current_sector = -1;
             hyst_counter = 0;
             digitalWrite(PIN_LED, HIGH);
-            Serial.println("[LOCK] 🔒");
         }
 
         if (released && locked) {
             locked = false;
             digitalWrite(PIN_LED, LOW);
-            Serial.printf("[LOCK] 🔓 sector=%d\n", current_sector);
             if (current_sector >= 0) {
                 queue_ble(BLEEvent::CONFIRM, (uint8_t)current_sector);
             }
@@ -294,8 +291,6 @@ void core0_task(void* param) {
                 queue_ble_aim(roll_byte, pitch_byte);
                 current_sector = sector;
 
-                Serial.printf("[IMU] r=%.1f p=%.1f  →  (%d,%d)  sector=%d\n",
-                              accum_roll, accum_pitch, roll_byte, pitch_byte, sector);
             }
         }
 
@@ -318,7 +313,6 @@ void core1_task(void* param) {
                 ble.sendAim(ev.roll, ev.pitch);
             } else if (ev.type == BLEEvent::CONFIRM) {
                 ble.sendConfirm(ev.sector);
-                Serial.printf("[BLE] → 0xBB confirm=%d\n", ev.sector);
             }
         }
     }
@@ -329,10 +323,6 @@ void core1_task(void* param) {
 // ============================================================
 
 void setup() {
-    Serial.begin(115200);
-    delay(100);
-    Serial.println("\n[Boot] WavePie V2");
-
     pinMode(PIN_LED, OUTPUT);
     digitalWrite(PIN_LED, LOW);
 
@@ -340,7 +330,6 @@ void setup() {
     xTaskCreatePinnedToCore(core1_task, "BLE", 8192, NULL, 1, NULL, 1);
 
     if (!mpu_begin()) {
-        Serial.println("[Boot] ❌ MPU6050 失败");
         pinMode(PIN_LED, OUTPUT);
         while (true) {
             digitalWrite(PIN_LED, !digitalRead(PIN_LED));

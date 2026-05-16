@@ -25,7 +25,8 @@ BORDER      = "#444466"
 POINTER_DOT = "#7BC0FF"
 ACCENT = "#4A90D9"
 
-THROTTLE_S = 1.0 / 30.0
+THROTTLE_S = 1.0 / 60.0  # 扇区帧率
+SIGHT_THROTTLE = 1.0 / 60.0  # 准星帧率
 
 
 class OverlayUI:
@@ -160,15 +161,12 @@ class OverlayUI:
 
         # 扇区计算
         deadzone = self._visible_r * 0.39
-        dist = math.hypot(sx, sy)
-        if dist < deadzone:
-            self._selected_idx = -1
-        else:
-            angle = math.atan2(-sy, sx) + math.pi / 2
-            if angle < 0:
-                angle += 2 * math.pi
-            self._selected_idx = int(angle / self._sector_angle) % self._n
-        self._redraw()
+        d = math.hypot(sx, sy)
+        new_idx = -1 if d < deadzone else int((math.atan2(-sy, sx) + math.pi / 2) % (2 * math.pi) / self._sector_angle) % self._n
+        if new_idx != self._selected_idx:
+            self._selected_idx = new_idx
+            self._redraw()
+        self._draw_sight()
 
     # ══════════════════════════════════════════════
     # 显示器定位

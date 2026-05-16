@@ -46,13 +46,28 @@ class WavePieV3:
         ble = BLEInputProvider(device_name=self.config.ble.device_name)
         self._ble = ble
 
+        # 平滑 + 磁吸状态
+        self._smooth_rx = 0.0
+        self._smooth_ry = 0.0
+
+        def _poll_sight():
+            if self.ui.state == "menu_open":
+                rx = -ble.latest_roll / 127.0
+                ry = -ble.latest_pitch / 127.0
+                # 指数平滑（去抖）
+                smooth = 0.65
+                self._smooth_rx = self._smooth_rx * smooth + rx * (1 - smooth)
+                self._smooth_ry = self._smooth_ry * smooth + ry * (1 - smooth)
+                self.ui.set_sight(self._smooth_rx, self._smooth_ry)
+            self.ui.root.after(16, _poll_sight)  # ~60fps
+
+        # 启动准星轮询（60fps）
+        self.ui.root.after(16, _poll_sight)
+
         def on_aim(roll_byte: int, pitch_byte: int):
             if self.ui.state != "menu_open":
                 items = self._build_menu_items()
                 self.ui.root.after(0, self.ui.activate, items)
-            rx = -roll_byte / 127.0
-            ry = -pitch_byte / 127.0
-            self.ui.root.after(0, self.ui.set_sight, rx, ry)
 
         def on_confirm(idx: int):
             self.ui.root.after(0, self._on_confirm)
@@ -93,7 +108,14 @@ class WavePieV3:
         return [Item(d) for d in self.config.menu_items]
 
     # ── 设置 / 退出 / 重启 ──
+    _last_settings_open = 0.0
+
     def _open_settings(self):
+        import time
+        now = time.monotonic()
+        if now - self._last_settings_open < 0.5:
+            return  # 防抖：500ms 内不重复打开
+        self._last_settings_open = now
         self.ui.root.after(0, self._open_settings_impl)
     def _open_settings_impl(self):
         from src.config_editor import ConfigEditor

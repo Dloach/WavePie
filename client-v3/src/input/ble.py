@@ -13,6 +13,9 @@ class BLEInputProvider:
         self._client: Optional[object] = None
         self._running = False
 
+        self.latest_roll = 0
+        self.latest_pitch = 0
+
         self.on_aim: Optional[Callable] = None       # cb(roll_byte, pitch_byte)
         self.on_confirm: Optional[Callable] = None    # cb(sector)
 
@@ -60,8 +63,10 @@ class BLEInputProvider:
                 return
             cmd = data[0]
             if cmd == 0xAA and len(data) >= 3 and self.on_aim:
-                roll = data[1] if data[1] < 128 else data[1] - 256  # unsigned→signed
+                roll = data[1] if data[1] < 128 else data[1] - 256
                 pitch = data[2] if data[2] < 128 else data[2] - 256
+                self.latest_roll = roll
+                self.latest_pitch = pitch
                 self.on_aim(roll, pitch)
             elif cmd == 0xBB and self.on_confirm:
                 self.on_confirm(data[1])

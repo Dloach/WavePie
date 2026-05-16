@@ -194,7 +194,7 @@ class ActionParamFrame(tk.Frame):
     def _build_text(self):
         entry = tk.Entry(self, textvariable=self._payload_var,
                          font=("Segoe UI", 9), bg=BG, fg=FG,
-                         bd=0, width=22, insertbackground=FG)
+                         bd=0, width=25, insertbackground=FG)
         entry.pack(side="left", ipady=2)
 
 
@@ -270,11 +270,11 @@ class ConfigEditor:
 
         # 参数面板（动态）
         param_frame = tk.Frame(row, bg=BG)
-        param_frame.pack(side="left", fill="x", expand=True, padx=(4, 0))
+        param_frame.pack(side="left", padx=(4, 0))
         action_param = ActionParamFrame(param_frame,
             action_type=item.get("action_type", "log"),
             payload=item.get("action_payload", ""))
-        action_param.pack(fill="x", expand=True)
+        action_param.pack(side="left")
 
         # 类型切换联动
         def on_type_change(*args, tv=type_var, ap=action_param):

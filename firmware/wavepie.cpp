@@ -30,7 +30,7 @@ constexpr int   NUM_SECTORS      = 12;
 constexpr float MAX_ANGLE        = 60.0f;     // ±60° → 全范围
 constexpr int   HYSTERESIS_TICKS = 3;          // 切换后 3 帧不重复切换
 
-constexpr int   IMU_HZ           = 100;
+constexpr int   IMU_HZ           = 250;
 constexpr int   IMU_INTERVAL_MS  = 1000 / IMU_HZ;
 
 // 按键去抖参数

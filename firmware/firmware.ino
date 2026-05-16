@@ -140,17 +140,13 @@ static void q_mul(const float a[4], const float b[4], float out[4]) {
 }
 
 /*
-  从四元数提取水平指向角（度）
-  将前向向量 [0,0,1] 旋转到世界坐标，投影到水平面。
-
-  注意：无磁力计辅助，无法消除 Z 轴漂移（yaw 漂移）。
-        同时 pitch ±90° 时 heading 会奇异（gimbal lock）。
-        手枪式握把 pitch 范围小（±45°），影响可接受。
+  从相对四元数提取水平指向角（度）
+  使用标准 yaw 公式：绕世界坐标系 Z 轴（重力方向）的旋转。
+  手枪式握把（X 竖直向上），绕重力轴旋转 = 左右瞄准。
 */
 static float quat_heading(const float q[4]) {
-    float x = 2.0f*(q[1]*q[3] - q[0]*q[2]);
-    float y = 2.0f*(q[2]*q[3] + q[0]*q[1]);
-    return atan2f(y, x) * 180.0f / M_PI;
+    return atan2f(2.0f*(q[0]*q[3] + q[1]*q[2]),
+                  1.0f - 2.0f*(q[2]*q[2] + q[3]*q[3])) * 180.0f / M_PI;
 }
 
 // ============================================================
@@ -272,6 +268,7 @@ void core0_task(void* param) {
                 float angle = quat_heading(q_rel);
                 int sector = angle_to_sector(angle, NUM_SECTORS);
 
+                Serial.printf("[IMU] angle=%.1f sector=%d\n", angle, sector);
                 if (hyst_counter > 0) {
                     hyst_counter--;
                 } else if (sector != current_sector) {

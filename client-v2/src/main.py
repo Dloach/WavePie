@@ -81,6 +81,11 @@ class WavePieV2:
         self._ble = ble
 
         def on_sector(idx: int):
+            # 第一个 0xAA 打开菜单，后续更新高亮
+            if self.ui.state != "menu_open":
+                items = self._build_menu_items()
+                self._menu_items_cache = items
+                self.ui.root.after(0, self.ui.activate, items)
             self.ui.root.after(0, self.ui.select_sector, idx)
 
         def on_confirm(idx: int):

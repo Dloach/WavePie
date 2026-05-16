@@ -205,8 +205,7 @@ struct DebouncedButton {
 void core0_task(void* param) {
     vTaskDelay(pdMS_TO_TICKS(500));
 
-    DebouncedButton btn;
-    btn.begin(PIN_BUTTON);
+    pinMode(PIN_BUTTON, INPUT_PULLUP);
 
     int16_t ax, ay, az, gx, gy, gz;
     unsigned long last_imu = 0;
@@ -214,63 +213,34 @@ void core0_task(void* param) {
     float q_zero[4] = {1,0,0,0};
     bool  locked = false;
     int   current_sector = -1;
-    int   hyst_counter = 0;       // 扇区切换后计数，防抖动
+    int   hyst_counter = 0;
+
+    // 按键去抖状态
+    bool  btn_stable = false;
+    bool  prev_btn = false;
+    unsigned long btn_last_change = 0;
 
     while (true) {
-        unsigned long now = millis();
-        int32_t diff = (int32_t)(now - last_imu);
-        if (diff < IMU_INTERVAL_MS) {
-            vTaskDelay(pdMS_TO_TICKS(1));
-            continue;
+        // ★ 按键去抖（始终运行，不依赖 IMU）
+        bool raw = (digitalRead(PIN_BUTTON) == LOW);
+        if (raw != btn_stable) {
+            btn_stable = raw;
+            btn_last_change = millis();
         }
-        last_imu = now;
-        float dt = IMU_INTERVAL_MS / 1000.0f;
+        bool stable = (millis() - btn_last_change >= 15) ? btn_stable : prev_btn;
 
-        // 读取 IMU
-        if (!mpu_read_raw(&ax, &ay, &az, &gx, &gy, &gz)) continue;
+        bool pressed  =  stable && !prev_btn;
+        bool released = !stable &&  prev_btn;
+        prev_btn = stable;
 
-        float fax = ax / ACCEL_SCALE;
-        float fay = ay / ACCEL_SCALE;
-        float faz = az / ACCEL_SCALE;
-        float fgx = gx / GYRO_SCALE;
-        float fgy = gy / GYRO_SCALE;
-        float fgz = gz / GYRO_SCALE;
-
-        filter.update(fgx, fgy, fgz, fax, fay, faz, dt);
-
-        // 按键去抖 + 边缘检测
-        bool btn_state = btn.read();
-        static bool prev_btn = false;
-        bool pressed  =  btn_state && !prev_btn;   // 下降沿（LOW=按下）
-        bool released = !btn_state &&  prev_btn;    // 上升沿（HIGH=松开）
-        prev_btn = btn_state;
-
+        // ── 状态机（独立于 IMU）──
         if (pressed && !locked) {
+            // 锁当前姿态
             memcpy(q_zero, filter.q, sizeof(q_zero));
             locked = true;
             current_sector = -1;
             hyst_counter = 0;
             digitalWrite(PIN_LED, HIGH);
-        }
-
-        if (locked) {
-            float q_conj_zero[4];
-            q_conj(q_zero, q_conj_zero);
-
-            float q_rel[4];
-            q_mul(q_conj_zero, filter.q, q_rel);
-
-            float angle = quat_heading(q_rel);
-            int sector = angle_to_sector(angle, NUM_SECTORS);
-
-            // 时间滞回：切换后 HYSTERESIS_TICKS 帧内不允许再次切换
-            if (hyst_counter > 0) {
-                hyst_counter--;
-            } else if (sector != current_sector) {
-                current_sector = sector;
-                hyst_counter = HYSTERESIS_TICKS;
-                queue_ble(BLEEvent::SECTOR, (uint8_t)sector);
-            }
         }
 
         if (released && locked) {
@@ -281,6 +251,35 @@ void core0_task(void* param) {
             }
             current_sector = -1;
         }
+
+        // ── IMU 读取（100Hz）──
+        unsigned long now = millis();
+        if (now - last_imu >= IMU_INTERVAL_MS && locked) {
+            last_imu = now;
+            if (mpu_read_raw(&ax, &ay, &az, &gx, &gy, &gz)) {
+                float dt = IMU_INTERVAL_MS / 1000.0f;
+                filter.update(ax / ACCEL_SCALE, ay / ACCEL_SCALE, az / ACCEL_SCALE,
+                              gx / GYRO_SCALE, gy / GYRO_SCALE, gz / GYRO_SCALE, dt);
+
+                // 计算扇区
+                float q_conj_zero[4];
+                q_conj(q_zero, q_conj_zero);
+                float q_rel[4];
+                q_mul(q_conj_zero, filter.q, q_rel);
+                float angle = quat_heading(q_rel);
+                int sector = angle_to_sector(angle, NUM_SECTORS);
+
+                if (hyst_counter > 0) {
+                    hyst_counter--;
+                } else if (sector != current_sector) {
+                    current_sector = sector;
+                    hyst_counter = HYSTERESIS_TICKS;
+                    queue_ble(BLEEvent::SECTOR, (uint8_t)sector);
+                }
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 

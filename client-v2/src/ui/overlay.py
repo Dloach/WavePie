@@ -44,6 +44,9 @@ class OverlayUI:
         self._sector_ids: list[int] = []
         self._glow_ids: list[int] = []
         self._icon_ids: list[int] = []
+        self._sight_x = 0.0
+        self._sight_y = 0.0
+        self._sight_id: Optional[int] = None
 
         self.root.bind("<Escape>", lambda e: self.deactivate())
         self._idle_geom()
@@ -102,6 +105,29 @@ class OverlayUI:
             self._selected_idx = idx
         self._redraw()
 
+    def set_sight(self, rx: float, ry: float):
+        """设置准星位置（归一化 -1..1），自动计算扇区。"""
+        if self._state != "menu_open":
+            return
+        # 映射到像素偏移（外径 65% 为最大半径）
+        max_r = self._visible_r * 0.65
+        sx = rx * max_r
+        sy = ry * max_r
+        self._sight_x = sx
+        self._sight_y = sy
+
+        # 计算扇区
+        dist = math.hypot(sx, sy)
+        if dist < 5:
+            self._selected_idx = -1
+        else:
+            angle = math.atan2(sy, sx)
+            angle += math.pi / 2
+            if angle < 0:
+                angle += 2 * math.pi
+            self._selected_idx = int(angle / self._sector_angle) % self._n
+        self._redraw()
+
     # ── 绘制 ──
 
     def _build_sectors(self):
@@ -155,6 +181,21 @@ class OverlayUI:
         self._sector_ids.clear()
         self._glow_ids.clear()
         self._icon_ids.clear()
+        self._sight_id = None
+
+    def _draw_sight(self):
+        if self._sight_id:
+            self._canvas.delete(self._sight_id)
+        sx = self._cx + self._sight_x
+        sy = self._cy + self._sight_y
+        r = 5
+        self._sight_id = self._canvas.create_oval(
+            sx - r, sy - r, sx + r, sy + r,
+            fill=ACCENT, outline="white", width=2,
+        )
+        cl = 10
+        self._canvas.create_line(sx - cl, sy, sx + cl, sy, fill="white", width=1)
+        self._canvas.create_line(sx, sy - cl, sx, sy + cl, fill="white", width=1)
 
     def _redraw(self):
         now = time.monotonic()
@@ -171,3 +212,4 @@ class OverlayUI:
                 self._canvas.itemconfig(self._glow_ids[i], outline=glow)
             if i < len(self._icon_ids):
                 self._canvas.itemconfig(self._icon_ids[i], fill=tcol)
+        self._draw_sight()

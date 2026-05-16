@@ -1,9 +1,4 @@
-"""BLEInputProvider — V2 精简版（接收扇区包）。
-
-协议：
-  0xAA + 扇区索引(1B)  — 激活期间扇区更新
-  0xBB + 最终扇区(1B)  — 确认执行
-"""
+"""BLEInputProvider — V2 接收 2D 瞄准数据（roll_byte + pitch_byte）。"""
 
 import asyncio
 from typing import Optional, Callable
@@ -18,9 +13,8 @@ class BLEInputProvider:
         self._client: Optional[object] = None
         self._running = False
 
-        # ↳ 回调
-        self.on_sector: Optional[Callable] = None    # cb(sector_index) 激活中
-        self.on_confirm: Optional[Callable] = None   # cb(sector_index) 确认
+        self.on_aim: Optional[Callable] = None       # cb(roll_byte, pitch_byte)
+        self.on_confirm: Optional[Callable] = None    # cb(sector)
 
     @property
     def is_connected(self) -> bool:
@@ -36,7 +30,6 @@ class BLEInputProvider:
 
         print("[BLE] 🔍 扫描中...")
         device = None
-        # 兼容新旧设备名
         names = [self._device_name, "BLE Gesture Ctrl"]
         for _ in range(30):
             devices = await BleakScanner.discover(timeout=2.0)
@@ -59,19 +52,19 @@ class BLEInputProvider:
         await client.connect()
         self._client = client
         print(f"[BLE] ✅ 已连接")
-
         await asyncio.sleep(1.0)
 
-        # 订阅状态特征
+        # 解析 0xAA + 2 bytes (aim) 或 0xBB + 1 byte (confirm)
         def on_state(sender, data: bytearray):
             if len(data) < 2:
                 return
             cmd = data[0]
-            idx = data[1]
-            if cmd == 0xAA and self.on_sector:
-                self.on_sector(idx)
+            if cmd == 0xAA and len(data) >= 3 and self.on_aim:
+                roll = data[1] if data[1] < 128 else data[1] - 256  # unsigned→signed
+                pitch = data[2] if data[2] < 128 else data[2] - 256
+                self.on_aim(roll, pitch)
             elif cmd == 0xBB and self.on_confirm:
-                self.on_confirm(idx)
+                self.on_confirm(data[1])
 
         for svc in client.services:
             for char in svc.characteristics:

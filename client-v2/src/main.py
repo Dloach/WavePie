@@ -80,16 +80,21 @@ class WavePieV2:
         ble = BLEInputProvider(device_name=self.config.ble.device_name)
         self._ble = ble
 
-        def on_sector(idx: int):
-            # 第一个 0xAA 打开菜单，后续更新高亮
+        def on_aim(roll_byte: int, pitch_byte: int):
+            # 第一个 0xAA 打开菜单
             if self.ui.state != "menu_open":
                 items = self._build_menu_items()
                 self._menu_items_cache = items
                 self.ui.root.after(0, self.ui.activate, items)
-            self.ui.root.after(0, self.ui.select_sector, idx)
+            # 更新准星位置和扇区
+            rx = roll_byte / 127.0
+            ry = pitch_byte / 127.0
+            self.ui.root.after(0, self.ui.set_sight, rx, ry)
 
         def on_confirm(idx: int):
             self.ui.root.after(0, self._on_confirm, idx)
+
+        ble.on_aim = on_aim
 
         ble.on_sector = on_sector
         ble.on_confirm = on_confirm
@@ -107,18 +112,18 @@ class WavePieV2:
         self._ble_thread.start()
 
     def _on_confirm(self, idx: int):
-        """用户确认（松开扳机）→ 执行命令。"""
+        """用户确认（松开扳机）→ 执行当前高亮命令。"""
         if self.ui.state == "menu_open":
             items = self._build_menu_items()
-            if 0 <= idx < len(items):
-                item = items[idx]
-                print(f"[Exec] 🎯 确认: {item.label}")
+            sel = self.ui.selected_idx
+            if sel >= 0 and sel < len(items):
+                item = items[sel]
+                print(f"[Exec] 🎯 确认扇区{sel}: {item.label}")
                 self.ui.deactivate()
                 self._do_action(item.action_type, item.action_payload)
             else:
                 self.ui.deactivate()
         else:
-            # 空闲状态收到确认 → 打开菜单
             items = self._build_menu_items()
             self._menu_items_cache = items
             self.ui.root.after(0, self.ui.activate, items)

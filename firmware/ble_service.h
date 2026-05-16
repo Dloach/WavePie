@@ -28,6 +28,7 @@ public:
     
     // 线程安全发送（由 Core 1 调用）
     void sendSector(uint8_t sector);
+    void sendAim(int8_t roll, int8_t pitch);  // 2D 瞄准
     void sendConfirm(uint8_t sector);
     
     bool isConnected() const { return _connected; }

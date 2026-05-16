@@ -27,6 +27,13 @@ void BLEServiceManager::sendSector(uint8_t sector) {
     _charState->notify();
 }
 
+void BLEServiceManager::sendAim(int8_t roll, int8_t pitch) {
+    if (!_connected || !_charState) return;
+    uint8_t data[3] = { 0xAA, (uint8_t)roll, (uint8_t)pitch };
+    _charState->setValue(data, 3);
+    _charState->notify();
+}
+
 void BLEServiceManager::sendConfirm(uint8_t sector) {
     if (!_connected || !_charState) return;
     uint8_t data[2] = { 0xBB, sector };

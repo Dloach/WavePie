@@ -55,16 +55,24 @@ constexpr float GYRO_SCALE  = 131.0f;
 // ============================================================
 
 struct BLEEvent {
-    enum Type : uint8_t { SECTOR = 0xAA, CONFIRM = 0xBB };
+    enum Type : uint8_t { SECTOR = 0xAA, CONFIRM = 0xBB, AIM = 0xCC };
     Type  type;
     uint8_t sector;
+    int8_t  roll;
+    int8_t  pitch;
 };
 
 QueueHandle_t g_bleQueue = nullptr;
 
 static void queue_ble(BLEEvent::Type t, uint8_t s) {
     if (!g_bleQueue) return;
-    BLEEvent ev = { t, s };
+    BLEEvent ev = { t, s, 0, 0 };
+    xQueueSend(g_bleQueue, &ev, 0);
+}
+
+static void queue_ble_aim(int8_t r, int8_t p) {
+    if (!g_bleQueue) return;
+    BLEEvent ev = { BLEEvent::AIM, 0, r, p };
     xQueueSend(g_bleQueue, &ev, 0);
 }
 
@@ -206,7 +214,8 @@ void core0_task(void* param) {
     int16_t ax, ay, az, gx, gy, gz;
     unsigned long last_imu = 0;
 
-    float heading_accum = 0.0f;
+    float accum_roll = 0.0f;    // Z 轴旋转（左右瞄准）
+    float accum_pitch = 0.0f;   // Y 轴旋转（上下瞄准）
     bool  locked = false;
     int   current_sector = -1;
     int   hyst_counter = 0;
@@ -234,7 +243,8 @@ void core0_task(void* param) {
 
         // ── 状态机（独立于 IMU）──
         if (pressed && !locked) {
-            heading_accum = 0.0f;
+            accum_roll = 0.0f;
+            accum_pitch = 0.0f;
             locked = true;
             current_sector = -1;
             hyst_counter = 0;
@@ -259,22 +269,29 @@ void core0_task(void* param) {
             float dt = IMU_INTERVAL_MS / 1000.0f;
 
             if (mpu_read_raw(&ax, &ay, &az, &gx, &gy, &gz)) {
-                // ★ 直接积分陀螺仪 Z 轴
+                // ★ 2D 陀螺仪积分：gy = 上下瞄准, gz = 左右瞄准
+                float gy_dps = gy / GYRO_SCALE;
                 float gz_dps = gz / GYRO_SCALE;
-                heading_accum += gz_dps * dt;
+                accum_pitch += gy_dps * dt;
+                accum_roll  += gz_dps * dt;
 
-                int sector = angle_to_sector(heading_accum, NUM_SECTORS);
+                // 钳位到 ±30°（对应 int8 -127~+127）
+                accum_roll  = constrain(accum_roll, -30.0f, 30.0f);
+                accum_pitch = constrain(accum_pitch, -30.0f, 30.0f);
 
-                Serial.printf("[IMU] gz=%.0f°/s  accum=%.1f°  sector=%d\n",
-                              gz_dps, heading_accum, sector);
+                int8_t roll_byte  = (int8_t)(accum_roll  / 30.0f * 127.0f);
+                int8_t pitch_byte = (int8_t)(accum_pitch / 30.0f * 127.0f);
 
-                if (hyst_counter > 0) {
-                    hyst_counter--;
-                } else if (sector != current_sector) {
-                    current_sector = sector;
-                    hyst_counter = HYSTERESIS_TICKS;
-                    queue_ble(BLEEvent::SECTOR, (uint8_t)sector);
-                }
+                // 计算扇区（用于 0xBB 确认）
+                float angle = atan2f(accum_roll, accum_pitch) * 180.0f / M_PI;
+                int sector = angle_to_sector(angle, NUM_SECTORS);
+
+                // 送 2D 瞄准数据
+                queue_ble_aim(roll_byte, pitch_byte);
+                current_sector = sector;
+
+                Serial.printf("[IMU] r=%.1f p=%.1f  →  (%d,%d)  sector=%d\n",
+                              accum_roll, accum_pitch, roll_byte, pitch_byte, sector);
             }
         }
 
@@ -293,9 +310,8 @@ void core1_task(void* param) {
     BLEEvent ev;
     while (true) {
         if (xQueueReceive(g_bleQueue, &ev, pdMS_TO_TICKS(50))) {
-            if (ev.type == BLEEvent::SECTOR) {
-                ble.sendSector(ev.sector);
-                Serial.printf("[BLE] → 0xAA sector=%d\n", ev.sector);
+            if (ev.type == BLEEvent::AIM) {
+                ble.sendAim(ev.roll, ev.pitch);
             } else if (ev.type == BLEEvent::CONFIRM) {
                 ble.sendConfirm(ev.sector);
                 Serial.printf("[BLE] → 0xBB confirm=%d\n", ev.sector);

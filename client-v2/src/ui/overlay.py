@@ -59,29 +59,15 @@ class OverlayUI:
         self._canvas.pack_forget()
 
     def _active_geom(self):
-        # 菜单出现在鼠标所在的显示器
-        import ctypes
-        from ctypes import wintypes
-        pt = wintypes.POINT()
-        ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
-        hMon = ctypes.windll.user32.MonitorFromPoint(pt.x, pt.y, 0)
-        mi = wintypes.RECT()
-        ctypes.windll.user32.GetMonitorInfoW(hMon, ctypes.byref(mi))
-        # mi 结构: left, top, right, bottom
-        left   = getattr(mi, 'left', 0)   if hasattr(mi, 'left') else mi[0]
-        top    = getattr(mi, 'top', 0)    if hasattr(mi, 'top') else mi[1]
-        right  = getattr(mi, 'right', 0)  if hasattr(mi, 'right') else mi[2]
-        bottom = getattr(mi, 'bottom', 0) if hasattr(mi, 'bottom') else mi[3]
-        # 兼容 tuple 和 namedtuple
-        if isinstance(mi, tuple):
-            left, top, right, bottom = mi[0], mi[1], mi[2], mi[3]
-
-        sw = right - left
-        sh = bottom - top
-        self.root.geometry(f"{sw}x{sh}+{left}+{top}")
+        # 全虚拟桌面覆盖，菜单圆心 = 当前鼠标位置
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        self.root.geometry(f"{sw}x{sh}+0+0")
         self._canvas.pack(fill=tk.BOTH, expand=True)
-        self._cx = sw / 2
-        self._cy = sh / 2
+        mx = self.root.winfo_pointerx()
+        my = self.root.winfo_pointery()
+        self._cx = mx
+        self._cy = my
 
     # ── 公开 API ──
 
@@ -131,10 +117,16 @@ class OverlayUI:
         """设置准星位置（归一化 -1..1），自动计算扇区。"""
         if self._state != "menu_open":
             return
-        # 2x 速度 + 映射到像素偏移
+        # 2x 速度 + 映射到像素偏移，约束在圆形内
         max_r = self._visible_r
         sx = rx * max_r
         sy = ry * max_r
+        # 圆形裁剪
+        dist = math.hypot(sx, sy)
+        if dist > max_r:
+            scale = max_r / dist
+            sx *= scale
+            sy *= scale
         self._sight_x = sx
         self._sight_y = sy
 

@@ -87,6 +87,7 @@ class WavePieV2:
                 self._menu_items_cache = items
                 self.ui.root.after(0, self.ui.activate, items)
             # 更新准星位置和扇区
+            # 左右瞄准→roll(gyZ)→rx, 上下瞄准→pitch(gyY)→ry
             rx = roll_byte / 127.0
             ry = pitch_byte / 127.0
             self.ui.root.after(0, self.ui.set_sight, rx, ry)

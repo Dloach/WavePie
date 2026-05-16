@@ -95,6 +95,10 @@ class OverlayUI:
         self._idle_geom()
         print("[UI] 🔴 关闭")
 
+    @property
+    def selected_idx(self) -> int:
+        return self._selected_idx
+
     def select_sector(self, idx: int):
         """BLE 传入扇区索引 → 高亮。"""
         if self._state != "menu_open":

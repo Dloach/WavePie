@@ -312,18 +312,20 @@ void setup() {
     pinMode(PIN_LED, OUTPUT);
     digitalWrite(PIN_LED, LOW);
 
+    // 先启动 BLE（即使没有 IMU 也能看到设备）
+    g_bleQueue = xQueueCreate(8, sizeof(BLEEvent));
+    xTaskCreatePinnedToCore(core1_task, "BLE", 8192, NULL, 1, NULL, 1);
+
+    // 再检查 IMU（失败只闪灯，不阻塞 BLE）
     if (!mpu_begin()) {
+        pinMode(PIN_LED, OUTPUT);
         while (true) {
             digitalWrite(PIN_LED, !digitalRead(PIN_LED));
-            vTaskDelay(pdMS_TO_TICKS(100));
+            delay(100);
         }
     }
 
     filter.setBeta(0.1f);
-
-    g_bleQueue = xQueueCreate(8, sizeof(BLEEvent));
-
-    xTaskCreatePinnedToCore(core1_task, "BLE", 8192, NULL, 1, NULL, 1);
     core0_task(NULL);
 }
 

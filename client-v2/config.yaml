@@ -1,45 +1,43 @@
-aim:
-  dead_zone: 1.0
-  sensitivity: 9.0
-  smoothing: 0.7
+# WavePie V2 — 配置
+
 ble:
-  device_name: BLE Gesture Ctrl
-buttons: []
+  device_name: "WavePie"
+
 menu:
   items:
-  - action_payload: win+shift+s
-    action_type: log
-    label: 截图区域
-  - action_payload: win+prtsc
-    action_type: log
-    label: 截全屏
-  - action_payload: ctrl+c
-    action_type: log
-    label: 复制
-  - action_payload: ctrl+v
-    action_type: log
-    label: 粘贴
-  - action_payload: ctrl+z
-    action_type: log
-    label: 撤销
-  - action_payload: ctrl+s
-    action_type: log
-    label: 保存
-  - action_payload: volume_up
-    action_type: log
-    label: 音量+
-  - action_payload: volume_down
-    action_type: log
-    label: 音量-
-  - action_payload: volume_mute
-    action_type: log
-    label: 静音
-  - action_payload: enter
-    action_type: log
-    label: 回车
-  - action_payload: win+l
-    action_type: log
-    label: 锁屏
-  - action_payload: ctrl+win+left
-    action_type: log
-    label: 任务视图
+    - label: "截图区域"
+      action_type: key_combo
+      action_payload: "win+shift+s"
+    - label: "截全屏"
+      action_type: key_combo
+      action_payload: "win+prtsc"
+    - label: "复制"
+      action_type: key_combo
+      action_payload: "ctrl+c"
+    - label: "粘贴"
+      action_type: key_combo
+      action_payload: "ctrl+v"
+    - label: "撤销"
+      action_type: key_combo
+      action_payload: "ctrl+z"
+    - label: "保存"
+      action_type: key_combo
+      action_payload: "ctrl+s"
+    - label: "音量+"
+      action_type: key
+      action_payload: "volume_up"
+    - label: "音量-"
+      action_type: key
+      action_payload: "volume_down"
+    - label: "静音"
+      action_type: key
+      action_payload: "volume_mute"
+    - label: "回车"
+      action_type: key
+      action_payload: "enter"
+    - label: "锁屏"
+      action_type: key_combo
+      action_payload: "win+l"
+    - label: "任务视图"
+      action_type: key_combo
+      action_payload: "ctrl+win+left"

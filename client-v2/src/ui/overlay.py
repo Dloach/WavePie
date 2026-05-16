@@ -59,15 +59,30 @@ class OverlayUI:
         self._canvas.pack_forget()
 
     def _active_geom(self):
-        # 全虚拟桌面覆盖，菜单圆心 = 当前鼠标位置
-        sw = self.root.winfo_screenwidth()
-        sh = self.root.winfo_screenheight()
-        self.root.geometry(f"{sw}x{sh}+0+0")
-        self._canvas.pack(fill=tk.BOTH, expand=True)
+        """窗口覆盖鼠标所在显示器，菜单圆心 = 该显示器中央。"""
+        import ctypes, struct
         mx = self.root.winfo_pointerx()
         my = self.root.winfo_pointery()
-        self._cx = mx
-        self._cy = my
+        try:
+            hMon = ctypes.windll.user32.MonitorFromPoint(mx, my, 0)
+            buf = ctypes.create_string_buffer(40)
+            ctypes.memset(buf, 0, 40)
+            ctypes.memmove(buf, ctypes.byref(ctypes.c_uint32(40)), 4)
+            ok = ctypes.windll.user32.GetMonitorInfoW(hMon, buf)
+            if not ok:
+                raise Exception("GetMonitorInfoW failed")
+            left, top, right, bottom = struct.unpack_from("<llll", buf, 4)
+        except Exception:
+            left = top = 0
+            right = self.root.winfo_screenwidth()
+            bottom = self.root.winfo_screenheight()
+
+        sw = right - left
+        sh = bottom - top
+        self.root.geometry(f"{sw}x{sh}+{left}+{top}")
+        self._canvas.pack(fill=tk.BOTH, expand=True)
+        self._cx = sw / 2
+        self._cy = sh / 2
 
     # ── 公开 API ──
 

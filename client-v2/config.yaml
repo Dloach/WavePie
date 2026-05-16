@@ -3,7 +3,7 @@ ble:
 menu:
   items:
   - action_payload: win+shift+s
-    action_type: log
+    action_type: macro
     label: 截图区域
   - action_payload: win+prtsc
     action_type: log

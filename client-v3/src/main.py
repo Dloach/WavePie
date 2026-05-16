@@ -50,7 +50,7 @@ class WavePieV3:
             if self.ui.state != "menu_open":
                 items = self._build_menu_items()
                 self.ui.root.after(0, self.ui.activate, items)
-            rx = roll_byte / 127.0
+            rx = -roll_byte / 127.0
             ry = -pitch_byte / 127.0
             self.ui.root.after(0, self.ui.set_sight, rx, ry)
 

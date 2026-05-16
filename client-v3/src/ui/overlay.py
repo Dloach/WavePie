@@ -99,7 +99,7 @@ class OverlayUI:
         # 屏幕坐标 → Canvas 坐标（减去虚拟桌面原点）
         self._cx = cx - self._vx
         self._cy = cy - self._vy
-        print(f"[UI] 圆心=({cx:.0f}, {cy:.0f})  虚拟桌面=({self._vx},{self._vy}) {self._vw}x{self._vh}")
+
 
     # ══════════════════════════════════════════════
     # 公开 API
@@ -127,7 +127,6 @@ class OverlayUI:
         else:
             self._cx, self._cy = self._get_monitor_center(None, None)
 
-        print(f"[UI] activate → 圆心=({self._cx:.0f},{self._cy:.0f})  虚拟桌面=({self._vx},{self._vy}) {self._vw}x{self._vh}")
         self._active_geom(self._cx, self._cy)
         self._build_sectors()
         self._sight_x = 0.0

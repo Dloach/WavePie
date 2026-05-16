@@ -1,6 +1,10 @@
-"""OverlayUI — 全屏透明径向菜单（V2 精简版）。
+"""OverlayUI V3 — V1 双显兼容绘制 + V2 BLE 准星。
 
-接收 BLE 传回的扇区索引 → 高亮对应项。
+工作流程:
+  BLE 0xAA → set_sight(rx, ry) → 准星位置 → 扇区高亮
+  BLE 0xBB → deactivate() → 执行命令
+
+V1 核心保留: GetSystemMetrics 虚拟桌面、MONITORINFO 显示器中央、transparentcolor="black"
 """
 
 import math
@@ -8,11 +12,19 @@ import time
 import tkinter as tk
 from typing import Callable, Optional
 
-BG = "#2B2B2B"
-FG = "#FFFFFF"
+
+# ── 调色板 ──
+BG_DARK     = "#1A1A2E"
+BG_SECTOR   = "#2D2D44"
+HL_SECTOR   = "#4A90D9"
+HL_GLOW     = "#5BA3E6"
+TEXT_LIGHT  = "#FFFFFF"
+TEXT_DIM    = "#888899"
+CENTER_DOT  = "#3D3D5C"
+BORDER      = "#444466"
+POINTER_DOT = "#7BC0FF"
 ACCENT = "#4A90D9"
-HIGHLIGHT = "#F5A623"
-DIM = "#999999"
+
 THROTTLE_S = 1.0 / 30.0
 
 
@@ -20,51 +32,52 @@ class OverlayUI:
     def __init__(self, config, on_execute: Callable = None):
         self._cfg = config
         self._on_execute = on_execute
+        self._build_window()
 
-        # 用 GetSystemMetrics 获取真实虚拟桌面（多显示器兼容）
+    def _build_window(self):
         self._vx, self._vy, self._vw, self._vh = self._get_virtual_screen()
 
         self.root = tk.Tk()
-        self.root.title("WavePie")
-        self.root.configure(bg="black")
+        self.root.title("WavePie V3")
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
+        self.root.configure(bg="black")
         self.root.attributes("-transparentcolor", "black")
 
-        self._canvas = tk.Canvas(self.root, bg="black", highlightthickness=0)
         self._idle_geom()
+        self._canvas = tk.Canvas(self.root, bg="black", highlightthickness=0)
+        self.root.bind("<Escape>", lambda e: self.deactivate())
 
+        # ── 状态 ──
         self._state = "idle"
         self._n = 0
         self._cx = 0.0
         self._cy = 0.0
-        self._visible_r = 480.0  # 缩放 120%
+        self._visible_r = 480.0
         self._sector_angle = math.radians(30)
         self._selected_idx = -1
         self._menu_items: list = []
         self._last_draw_time = 0.0
-        self._sector_ids: list[int] = []
-        self._glow_ids: list[int] = []
-        self._icon_ids: list[int] = []
+
+        # ── 准星 ──
         self._sight_x = 0.0
         self._sight_y = 0.0
         self._sight_id: Optional[int] = None
         self._crosshair_ids: list[int] = []
 
-        self.root.bind("<Escape>", lambda e: self.deactivate())
-
-    # ── 几何 ──
+    # ══════════════════════════════════════════════
+    # 虚拟桌面（V1 方法，多显示器兼容）
+    # ══════════════════════════════════════════════
 
     @staticmethod
     def _get_virtual_screen():
-        """获取完整虚拟桌面边界（所有显示器）——与 V1 一致。"""
         try:
             import ctypes
             u = ctypes.windll.user32
-            vx = u.GetSystemMetrics(76)  # SM_XVIRTUALSCREEN
-            vy = u.GetSystemMetrics(77)  # SM_YVIRTUALSCREEN
-            vw = u.GetSystemMetrics(78)  # SM_CXVIRTUALSCREEN
-            vh = u.GetSystemMetrics(79)  # SM_CYVIRTUALSCREEN
+            vx = u.GetSystemMetrics(76)
+            vy = u.GetSystemMetrics(77)
+            vw = u.GetSystemMetrics(78)
+            vh = u.GetSystemMetrics(79)
             if vw > 0 and vh > 0:
                 return vx, vy, vw, vh
         except Exception:
@@ -73,43 +86,29 @@ class OverlayUI:
 
     def _idle_geom(self):
         self.root.geometry("1x1+0+0")
-        self.root.attributes("-alpha", 0.01)  # V1: 空闲时几乎透明
+        self.root.attributes("-alpha", 0.01)
 
-    def _active_geom(self):
-        """全虚拟桌面覆盖，圆心 = 鼠标所在显示器中央（V1 方案）。"""
+    def _active_geom(self, cx, cy):
         self.root.attributes("-alpha", 0.85)
         self.root.geometry(f"{self._vw}x{self._vh}+{self._vx}+{self._vy}")
         self._canvas.configure(width=self._vw, height=self._vh)
         self._canvas.pack()
+        self._cx = cx
+        self._cy = cy
 
-        from ctypes import wintypes, windll, byref, sizeof, Structure, c_long, c_uint32
-        class RECT(Structure):
-            _fields_ = [("l", c_long),("t",c_long),("r",c_long),("b",c_long)]
-        class MONITORINFO(Structure):
-            _fields_ = [("cb", c_uint32),("rc",RECT),("wk",RECT),("fl",c_uint32)]
-        try:
-            mx = self.root.winfo_pointerx()
-            my = self.root.winfo_pointery()
-            pt = wintypes.POINT(c_long(mx), c_long(my))
-            hMon = windll.user32.MonitorFromPoint(pt, 0)
-            mi = MONITORINFO()
-            mi.cb = sizeof(mi)
-            if windll.user32.GetMonitorInfoW(hMon, byref(mi)):
-                self._cx = (mi.rc.l + mi.rc.r) / 2
-                self._cy = (mi.rc.t + mi.rc.b) / 2
-                return
-        except Exception:
-            pass
-        self._cx = self._vw / 2
-        self._cy = self._vh / 2
-
-    # ── 公开 API ──
+    # ══════════════════════════════════════════════
+    # 公开 API
+    # ══════════════════════════════════════════════
 
     @property
     def state(self) -> str:
         return self._state
 
-    def activate(self, menu_items: list):
+    @property
+    def selected_idx(self) -> int:
+        return self._selected_idx
+
+    def activate(self, menu_items: list, cx: int = None, cy: int = None):
         if self._state != "idle":
             return
         self._state = "menu_open"
@@ -117,11 +116,18 @@ class OverlayUI:
         self._n = len(menu_items)
         self._sector_angle = 2 * math.pi / max(self._n, 1)
         self._selected_idx = -1
-        self._active_geom()
+
+        if cx is not None and cy is not None:
+            self._cx, self._cy = cx, cy
+        else:
+            self._cx, self._cy = self._get_monitor_center(None, None)
+
+        self._active_geom(self._cx, self._cy)
         self._build_sectors()
+        self._sight_x = 0.0
+        self._sight_y = 0.0
         self.root.lift()
         self.root.focus_force()
-        print(f"[UI] 🟢 菜单 ({self._n} 项)")
 
     def deactivate(self):
         if self._state == "idle":
@@ -131,31 +137,14 @@ class OverlayUI:
         self._clear()
         self._canvas.pack_forget()
         self._idle_geom()
-        print("[UI] 🔴 关闭")
-
-    @property
-    def selected_idx(self) -> int:
-        return self._selected_idx
-
-    def select_sector(self, idx: int):
-        """BLE 传入扇区索引 → 高亮。"""
-        if self._state != "menu_open":
-            return
-        if idx < 0 or idx >= self._n:
-            self._selected_idx = -1
-        else:
-            self._selected_idx = idx
-        self._redraw()
 
     def set_sight(self, rx: float, ry: float):
-        """设置准星位置（归一化 -1..1），自动计算扇区。"""
+        """设置准星位置（归一化 -1..1），约束在圆内。"""
         if self._state != "menu_open":
             return
-        # 2x 速度 + 映射到像素偏移，约束在圆形内
         max_r = self._visible_r
         sx = rx * max_r
         sy = ry * max_r
-        # 圆形裁剪
         dist = math.hypot(sx, sy)
         if dist > max_r:
             scale = max_r / dist
@@ -164,19 +153,46 @@ class OverlayUI:
         self._sight_x = sx
         self._sight_y = sy
 
+        # 扇区计算
+        deadzone = self._visible_r * 0.39
         dist = math.hypot(sx, sy)
-        deadzone = self._visible_r * 0.3 * 1.3  # 中心盲区 +30%
         if dist < deadzone:
             self._selected_idx = -1
         else:
-            angle = math.atan2(-sy, sx)  # sy取反：屏幕Y正→下，atan2期望Y正→上
-            angle += math.pi / 2
+            angle = math.atan2(-sy, sx) + math.pi / 2
             if angle < 0:
                 angle += 2 * math.pi
             self._selected_idx = int(angle / self._sector_angle) % self._n
         self._redraw()
 
-    # ── 绘制 ──
+    # ══════════════════════════════════════════════
+    # 显示器定位
+    # ══════════════════════════════════════════════
+
+    @staticmethod
+    def _get_monitor_center(cursor_x, cursor_y):
+        """鼠标所在显示器正中央。"""
+        try:
+            from ctypes import windll, byref, sizeof, Structure, c_long, c_uint32, wintypes
+            class RECT(Structure):
+                _fields_ = [("l",c_long),("t",c_long),("r",c_long),("b",c_long)]
+            class MONITORINFO(Structure):
+                _fields_ = [("cb",c_uint32),("rc",RECT),("wk",RECT),("fl",c_uint32)]
+            mx = wintypes.GetCursorPos()[0]
+            my = wintypes.GetCursorPos()[1]
+            pt = wintypes.POINT(c_long(mx), c_long(my))
+            hMon = windll.user32.MonitorFromPoint(pt, 0)
+            mi = MONITORINFO()
+            mi.cb = sizeof(mi)
+            if windll.user32.GetMonitorInfoW(hMon, byref(mi)):
+                return (mi.rc.l + mi.rc.r) / 2, (mi.rc.t + mi.rc.b) / 2
+        except Exception:
+            pass
+        return 960, 540
+
+    # ══════════════════════════════════════════════
+    # 绘制
+    # ══════════════════════════════════════════════
 
     def _build_sectors(self):
         self._clear()
@@ -184,17 +200,20 @@ class OverlayUI:
         if n == 0:
             return
         step = self._sector_angle
-        inner_r = self._visible_r * 0.39  # 中心盲区 +30%
+        inner_r = self._visible_r * 0.39
+
+        self._sector_ids = []
+        self._glow_ids = []
+        self._icon_ids = []
 
         for i in range(n):
             a0 = i * step - math.pi / 2
-            a1 = a0 + step
             sid = self._canvas.create_arc(
                 self._cx - self._visible_r, self._cy - self._visible_r,
                 self._cx + self._visible_r, self._cy + self._visible_r,
                 start=math.degrees(a0) + 1,
                 extent=math.degrees(step) - 2,
-                fill="", outline=DIM, width=2,
+                fill="", outline=TEXT_DIM, width=2,
             )
             self._sector_ids.append(sid)
             gid = self._canvas.create_arc(
@@ -202,7 +221,7 @@ class OverlayUI:
                 self._cx + self._visible_r, self._cy + self._visible_r,
                 start=math.degrees(a0) + 1,
                 extent=math.degrees(step) - 2,
-                fill="#4A90D9", outline="#4A90D9", width=2, stipple="gray25",
+                fill="", outline="#555555", width=2,
             )
             self._glow_ids.append(gid)
             self._canvas.create_oval(
@@ -219,21 +238,17 @@ class OverlayUI:
             item = self._menu_items[i] if i < len(self._menu_items) else None
             label = item.label[:8] if item and item.label else f"项{i}"
             tid = self._canvas.create_text(
-                x, y, text=label,
-                fill=FG, font=("Segoe UI", 11, "bold"),
+                x, y, text=label, fill=TEXT_LIGHT,
+                font=("Segoe UI", 11, "bold"),
             )
             self._icon_ids.append(tid)
 
     def _clear(self):
         self._canvas.delete("all")
-        self._sector_ids.clear()
-        self._glow_ids.clear()
-        self._icon_ids.clear()
         self._sight_id = None
         self._crosshair_ids.clear()
 
     def _draw_sight(self):
-        # 清除旧准星（含十字线）
         if self._sight_id:
             self._canvas.delete(self._sight_id)
             self._sight_id = None
@@ -250,11 +265,9 @@ class OverlayUI:
         )
         cl = 10
         self._crosshair_ids.append(
-            self._canvas.create_line(sx - cl, sy, sx + cl, sy, fill="white", width=1)
-        )
+            self._canvas.create_line(sx - cl, sy, sx + cl, sy, fill="white", width=1))
         self._crosshair_ids.append(
-            self._canvas.create_line(sx, sy - cl, sx, sy + cl, fill="white", width=1)
-        )
+            self._canvas.create_line(sx, sy - cl, sx, sy + cl, fill="white", width=1))
 
     def _redraw(self):
         now = time.monotonic()
@@ -262,13 +275,13 @@ class OverlayUI:
             return
         self._last_draw_time = now
         for i in range(self._n):
-            tcol = FG if i == self._selected_idx else DIM
+            out = HL_SECTOR if i == self._selected_idx else TEXT_DIM
+            fill = HL_GLOW if i == self._selected_idx else ""
+            tcol = TEXT_LIGHT if i == self._selected_idx else TEXT_DIM
             if i < len(self._sector_ids):
-                out = HIGHLIGHT if i == self._selected_idx else DIM
-                self._canvas.itemconfig(self._sector_ids[i], outline=out)
+                self._canvas.itemconfig(self._sector_ids[i], outline=out, fill="")
             if i < len(self._glow_ids):
-                fill = ACCENT if i == self._selected_idx else ""
-                self._canvas.itemconfig(self._glow_ids[i], fill=fill)
+                self._canvas.itemconfig(self._glow_ids[i], outline=fill, fill=fill)
             if i < len(self._icon_ids):
                 self._canvas.itemconfig(self._icon_ids[i], fill=tcol)
         self._draw_sight()

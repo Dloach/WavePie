@@ -125,7 +125,7 @@ class OverlayUI:
         if dist < 5:
             self._selected_idx = -1
         else:
-            angle = math.atan2(sy, sx)
+            angle = math.atan2(-sy, sx)  # sy取反：屏幕Y正→下，atan2期望Y正→上
             angle += math.pi / 2
             if angle < 0:
                 angle += 2 * math.pi

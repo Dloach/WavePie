@@ -31,7 +31,7 @@ class BLEInputProvider:
         print("[BLE] 🔍 扫描中...")
         device = None
         names = [self._device_name, "BLE Gesture Ctrl"]
-        for _ in range(30):
+        for _ in range(10):
             devices = await BleakScanner.discover(timeout=2.0)
             for d in devices:
                 if d.name:

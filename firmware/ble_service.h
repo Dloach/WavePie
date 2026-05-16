@@ -42,7 +42,10 @@ private:
     public:
         ServerCB(volatile bool* flag) : _flag(flag) {}
         void onConnect(BLEServer* s) override { *_flag = true; }
-        void onDisconnect(BLEServer* s) override { *_flag = false; }
+        void onDisconnect(BLEServer* s) override {
+            *_flag = false;
+            s->startAdvertising();  // 断开后立刻重广播
+        }
     private:
         volatile bool* _flag;
     };

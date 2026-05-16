@@ -233,6 +233,9 @@ void core0_task(void* param) {
         bool released = !stable &&  prev_btn;
         prev_btn = stable;
 
+        if (pressed)  Serial.printf("[BTN] 按下\n");
+        if (released) Serial.printf("[BTN] 松开\n");
+
         // ── 状态机（独立于 IMU）──
         if (pressed && !locked) {
             // 锁当前姿态
@@ -296,8 +299,10 @@ void core1_task(void* param) {
         if (xQueueReceive(g_bleQueue, &ev, pdMS_TO_TICKS(50))) {
             if (ev.type == BLEEvent::SECTOR) {
                 ble.sendSector(ev.sector);
+                Serial.printf("[BLE] → 0xAA sector=%d\n", ev.sector);
             } else if (ev.type == BLEEvent::CONFIRM) {
                 ble.sendConfirm(ev.sector);
+                Serial.printf("[BLE] → 0xBB confirm=%d\n", ev.sector);
             }
         }
     }
@@ -308,15 +313,18 @@ void core1_task(void* param) {
 // ============================================================
 
 void setup() {
+    Serial.begin(115200);
+    delay(100);
+    Serial.println("\n[Boot] WavePie V2");
+
     pinMode(PIN_LED, OUTPUT);
     digitalWrite(PIN_LED, LOW);
 
-    // 先启动 BLE（即使没有 IMU 也能看到设备）
     g_bleQueue = xQueueCreate(8, sizeof(BLEEvent));
     xTaskCreatePinnedToCore(core1_task, "BLE", 8192, NULL, 1, NULL, 1);
 
-    // 再检查 IMU（失败只闪灯，不阻塞 BLE）
     if (!mpu_begin()) {
+        Serial.println("[Boot] ❌ MPU6050 失败");
         pinMode(PIN_LED, OUTPUT);
         while (true) {
             digitalWrite(PIN_LED, !digitalRead(PIN_LED));

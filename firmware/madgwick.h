@@ -16,7 +16,7 @@ public:
     Madgwick() { reset(); }
 
     void reset() {
-        q0 = 1.0f; q1 = 0.0f; q2 = 0.0f; q3 = 0.0f;
+        q[0] = 1.0f; q[1] = 0.0f; q[2] = 0.0f; q[3] = 0.0f;
         beta = 0.1f;
     }
 
@@ -78,15 +78,15 @@ public:
     // ── 欧拉角（度）──
 
     float roll()  const {
-        return atan2f(2.0f*(q0*q1 + q2*q3), 1.0f - 2.0f*(q1*q1 + q2*q2)) * 180.0f / M_PI;
+        return atan2f(2.0f*(q[0]*q[1] + q[2]*q[3]), 1.0f - 2.0f*(q[1]*q[1] + q[2]*q[2])) * 180.0f / M_PI;
     }
 
     float pitch() const {
-        return asinf(2.0f*(q0*q2 - q3*q1)) * 180.0f / M_PI;
+        return asinf(2.0f*(q[0]*q[2] - q[3]*q[1])) * 180.0f / M_PI;
     }
 
     float yaw()   const {
-        return atan2f(2.0f*(q0*q3 + q1*q2), 1.0f - 2.0f*(q2*q2 + q3*q3)) * 180.0f / M_PI;
+        return atan2f(2.0f*(q[0]*q[3] + q[1]*q[2]), 1.0f - 2.0f*(q[2]*q[2] + q[3]*q[3])) * 180.0f / M_PI;
     }
 
     // 原始四元数 [w, x, y, z]

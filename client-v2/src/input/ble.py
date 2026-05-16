@@ -36,17 +36,23 @@ class BLEInputProvider:
 
         print("[BLE] 🔍 扫描中...")
         device = None
+        # 兼容新旧设备名
+        names = [self._device_name, "BLE Gesture Ctrl"]
         for _ in range(30):
             devices = await BleakScanner.discover(timeout=2.0)
             for d in devices:
-                if d.name and self._device_name in d.name:
-                    device = d
-                    break
+                if d.name:
+                    for n in names:
+                        if n in d.name:
+                            device = d
+                            break
+                    if device:
+                        break
             if device:
                 break
 
         if not device:
-            raise ConnectionError(f"未找到 {self._device_name}")
+            raise ConnectionError(f"未找到 {' / '.join(names)}")
 
         print(f"[BLE] ✅ {device.name}")
         client = BleakClient(device.address)

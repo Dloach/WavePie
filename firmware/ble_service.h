@@ -39,11 +39,11 @@ private:
 
     class ServerCB : public BLEServerCallbacks {
     public:
-        ServerCB(bool* flag) : _flag(flag) {}
+        ServerCB(volatile bool* flag) : _flag(flag) {}
         void onConnect(BLEServer* s) override { *_flag = true; }
         void onDisconnect(BLEServer* s) override { *_flag = false; }
     private:
-        bool* _flag;
+        volatile bool* _flag;
     };
 };
 

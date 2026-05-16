@@ -35,7 +35,7 @@ public:
 private:
     BLEServer*           _server = nullptr;
     BLECharacteristic*   _charState = nullptr;
-    bool                 _connected = false;
+    volatile bool        _connected = false;
 
     class ServerCB : public BLEServerCallbacks {
     public:

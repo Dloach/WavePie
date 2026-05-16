@@ -269,13 +269,15 @@ void core0_task(void* param) {
             float dt = IMU_INTERVAL_MS / 1000.0f;
 
             if (mpu_read_raw(&ax, &ay, &az, &gx, &gy, &gz)) {
-                // ★ 2D 陀螺仪积分：手枪握持（X朝上, Z朝前, Y朝右）
-                //   gy(Y轴) = 左右旋转(yaw)    → 水平方向
-                //   gx(X轴) = 上下旋转(pitch)  → 垂直方向
-                float gy_dps = gy / GYRO_SCALE;   // 左右瞄准
-                float gx_dps = gx / GYRO_SCALE;   // 上下瞄准
-                accum_roll  += gy_dps * dt;       // → 水平
-                accum_pitch += gx_dps * dt;        // → 垂直
+                // ★ 2D 陀螺仪积分：芯片平放（文字朝上）
+                //   小圆点左前:
+                //   X→右手方向  Y→正前方  Z→天花板（竖直）
+                //   gz(Z轴) = 左右瞄准(yaw)     → 水平
+                //   gy(Y轴) = 上下瞄准(pitch)   → 垂直
+                float gz_dps = gz / GYRO_SCALE;   // 左右
+                float gy_dps = gy / GYRO_SCALE;   // 上下
+                accum_roll  += gz_dps * dt;       // 水平
+                accum_pitch += gy_dps * dt;       // 垂直
 
                 // 钳位到 ±30°（对应 int8 -127~+127）
                 accum_roll  = constrain(accum_roll, -30.0f, 30.0f);

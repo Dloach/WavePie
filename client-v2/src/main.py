@@ -87,9 +87,14 @@ class WavePieV2:
                 self._menu_items_cache = items
                 self.ui.root.after(0, self.ui.activate, items)
             # 更新准星位置和扇区
-            # 左右瞄准→roll(gyZ)→rx, 上下瞄准→pitch(gyY)→ry
-            rx = roll_byte / 127.0
-            ry = pitch_byte / 127.0
+            # 芯片平放，文字顺时针90°，小圆点在左前：
+            #   X→右手方向  Y→正前方  Z→天花板
+            #   gz(水平旋转)→rx, gy(前后俯仰)→ry
+            # 取反：实际安装方向与参考方向差180°
+            # 芯片平放，文字顺时针90°，小圆点在左前：
+            #   水平(gz) → rx, 垂直(gy) → ry
+            rx = -roll_byte / 127.0
+            ry = -pitch_byte / 127.0
             self.ui.root.after(0, self.ui.set_sight, rx, ry)
 
         def on_confirm(idx: int):

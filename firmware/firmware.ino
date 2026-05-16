@@ -234,41 +234,40 @@ void core0_task(void* param) {
 
         // ── 状态机（独立于 IMU）──
         if (pressed && !locked) {
-            // 锁当前姿态
-            memcpy(q_zero, filter.q, sizeof(q_zero));
+            heading_accum = 0.0f;
             locked = true;
             current_sector = -1;
             hyst_counter = 0;
             digitalWrite(PIN_LED, HIGH);
+            Serial.println("[LOCK] 🔒");
         }
 
         if (released && locked) {
             locked = false;
             digitalWrite(PIN_LED, LOW);
+            Serial.printf("[LOCK] 🔓 sector=%d\n", current_sector);
             if (current_sector >= 0) {
                 queue_ble(BLEEvent::CONFIRM, (uint8_t)current_sector);
             }
             current_sector = -1;
         }
 
-        // ── IMU 读取（100Hz）──
+        // ── IMU 读取（100Hz，锁定有效时）──
         unsigned long now = millis();
         if (now - last_imu >= IMU_INTERVAL_MS && locked) {
             last_imu = now;
+            float dt = IMU_INTERVAL_MS / 1000.0f;
+
             if (mpu_read_raw(&ax, &ay, &az, &gx, &gy, &gz)) {
-                float dt = IMU_INTERVAL_MS / 1000.0f;
-                filter.update(ax / ACCEL_SCALE, ay / ACCEL_SCALE, az / ACCEL_SCALE,
-                              gx / GYRO_SCALE, gy / GYRO_SCALE, gz / GYRO_SCALE, dt);
+                // ★ 直接积分陀螺仪 Z 轴
+                float gz_dps = gz / GYRO_SCALE;
+                heading_accum += gz_dps * dt;
 
-                // 计算扇区
-                float q_conj_zero[4];
-                q_conj(q_zero, q_conj_zero);
-                float q_rel[4];
-                q_mul(q_conj_zero, filter.q, q_rel);
-                float angle = quat_heading(q_rel);
-                int sector = angle_to_sector(angle, NUM_SECTORS);
+                int sector = angle_to_sector(heading_accum, NUM_SECTORS);
 
-                Serial.printf("[IMU] angle=%.1f sector=%d\n", angle, sector);
+                Serial.printf("[IMU] gz=%.0f°/s  accum=%.1f°  sector=%d\n",
+                              gz_dps, heading_accum, sector);
+
                 if (hyst_counter > 0) {
                     hyst_counter--;
                 } else if (sector != current_sector) {

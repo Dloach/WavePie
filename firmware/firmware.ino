@@ -206,7 +206,7 @@ void core0_task(void* param) {
     int16_t ax, ay, az, gx, gy, gz;
     unsigned long last_imu = 0;
 
-    float q_zero[4] = {1,0,0,0};
+    float heading_accum = 0.0f;
     bool  locked = false;
     int   current_sector = -1;
     int   hyst_counter = 0;

@@ -91,10 +91,15 @@ class OverlayUI:
     def _active_geom(self, cx, cy):
         self.root.attributes("-alpha", 0.85)
         self.root.geometry(f"{self._vw}x{self._vh}+{self._vx}+{self._vy}")
+        self.root.update_idletasks()
         self._canvas.configure(width=self._vw, height=self._vh)
         self._canvas.pack()
-        self._cx = cx
-        self._cy = cy
+        self.root.lift()
+        self.root.focus_force()
+        # 屏幕坐标 → Canvas 坐标（减去虚拟桌面原点）
+        self._cx = cx - self._vx
+        self._cy = cy - self._vy
+        print(f"[UI] 圆心=({cx:.0f}, {cy:.0f})  虚拟桌面=({self._vx},{self._vy}) {self._vw}x{self._vh}")
 
     # ══════════════════════════════════════════════
     # 公开 API
@@ -122,6 +127,7 @@ class OverlayUI:
         else:
             self._cx, self._cy = self._get_monitor_center(None, None)
 
+        print(f"[UI] activate → 圆心=({self._cx:.0f},{self._cy:.0f})  虚拟桌面=({self._vx},{self._vy}) {self._vw}x{self._vh}")
         self._active_geom(self._cx, self._cy)
         self._build_sectors()
         self._sight_x = 0.0
@@ -178,9 +184,8 @@ class OverlayUI:
                 _fields_ = [("l",c_long),("t",c_long),("r",c_long),("b",c_long)]
             class MONITORINFO(Structure):
                 _fields_ = [("cb",c_uint32),("rc",RECT),("wk",RECT),("fl",c_uint32)]
-            mx = wintypes.GetCursorPos()[0]
-            my = wintypes.GetCursorPos()[1]
-            pt = wintypes.POINT(c_long(mx), c_long(my))
+            pt = wintypes.POINT()
+            windll.user32.GetCursorPos(byref(pt))
             hMon = windll.user32.MonitorFromPoint(pt, 0)
             mi = MONITORINFO()
             mi.cb = sizeof(mi)

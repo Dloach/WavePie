@@ -9,6 +9,7 @@ ESP32 端完成姿态→扇区计算，PC 端只负责：
 import sys
 import os
 import asyncio
+import subprocess
 import threading
 import time
 
@@ -163,9 +164,21 @@ class WavePieV2:
             pass
         os._exit(0)
 
+    def _restart(self):
+        """重启应用。"""
+        print("[App] 🔄 重启中...")
+        if self._ble:
+            self._ble._running = False
+        self.tray.stop()
+        self.ui.root.destroy()
+        subprocess.Popen([sys.executable, "-m", "src.main"])
+        os._exit(0)
+
     def start(self):
         self._start_ble()
         self.tray.start_background()
+        # Ctrl+R 重启
+        self.ui.root.bind("<Control-r>", lambda e: self._restart())
         self.ui.root.mainloop()
 
 

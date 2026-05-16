@@ -36,7 +36,7 @@ class OverlayUI:
         self._n = 0
         self._cx = 0.0
         self._cy = 0.0
-        self._visible_r = 400.0
+        self._visible_r = 480.0  # 缩放 120%
         self._sector_angle = math.radians(30)
         self._selected_idx = -1
         self._menu_items: list = []
@@ -47,6 +47,7 @@ class OverlayUI:
         self._sight_x = 0.0
         self._sight_y = 0.0
         self._sight_id: Optional[int] = None
+        self._crosshair_ids: list[int] = []
 
         self.root.bind("<Escape>", lambda e: self.deactivate())
         self._idle_geom()
@@ -58,9 +59,26 @@ class OverlayUI:
         self._canvas.pack_forget()
 
     def _active_geom(self):
-        sw = self.root.winfo_screenwidth()
-        sh = self.root.winfo_screenheight()
-        self.root.geometry(f"{sw}x{sh}+0+0")
+        # 菜单出现在鼠标所在的显示器
+        import ctypes
+        from ctypes import wintypes
+        pt = wintypes.POINT()
+        ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
+        hMon = ctypes.windll.user32.MonitorFromPoint(pt.x, pt.y, 0)
+        mi = wintypes.RECT()
+        ctypes.windll.user32.GetMonitorInfoW(hMon, ctypes.byref(mi))
+        # mi 结构: left, top, right, bottom
+        left   = getattr(mi, 'left', 0)   if hasattr(mi, 'left') else mi[0]
+        top    = getattr(mi, 'top', 0)    if hasattr(mi, 'top') else mi[1]
+        right  = getattr(mi, 'right', 0)  if hasattr(mi, 'right') else mi[2]
+        bottom = getattr(mi, 'bottom', 0) if hasattr(mi, 'bottom') else mi[3]
+        # 兼容 tuple 和 namedtuple
+        if isinstance(mi, tuple):
+            left, top, right, bottom = mi[0], mi[1], mi[2], mi[3]
+
+        sw = right - left
+        sh = bottom - top
+        self.root.geometry(f"{sw}x{sh}+{left}+{top}")
         self._canvas.pack(fill=tk.BOTH, expand=True)
         self._cx = sw / 2
         self._cy = sh / 2
@@ -113,16 +131,16 @@ class OverlayUI:
         """设置准星位置（归一化 -1..1），自动计算扇区。"""
         if self._state != "menu_open":
             return
-        # 映射到像素偏移（外径 65% 为最大半径）
-        max_r = self._visible_r * 0.65
+        # 2x 速度 + 映射到像素偏移
+        max_r = self._visible_r
         sx = rx * max_r
         sy = ry * max_r
         self._sight_x = sx
         self._sight_y = sy
 
-        # 计算扇区
         dist = math.hypot(sx, sy)
-        if dist < 5:
+        deadzone = self._visible_r * 0.3 * 1.3  # 中心盲区 +30%
+        if dist < deadzone:
             self._selected_idx = -1
         else:
             angle = math.atan2(-sy, sx)  # sy取反：屏幕Y正→下，atan2期望Y正→上
@@ -140,7 +158,7 @@ class OverlayUI:
         if n == 0:
             return
         step = self._sector_angle
-        inner_r = self._visible_r * 0.3
+        inner_r = self._visible_r * 0.39  # 中心盲区 +30%
 
         for i in range(n):
             a0 = i * step - math.pi / 2
@@ -158,7 +176,7 @@ class OverlayUI:
                 self._cx + self._visible_r, self._cy + self._visible_r,
                 start=math.degrees(a0) + 1,
                 extent=math.degrees(step) - 2,
-                fill="", outline="#555555", width=2,
+                fill="#4A90D9", outline="#4A90D9", width=2, stipple="gray25",
             )
             self._glow_ids.append(gid)
             self._canvas.create_oval(
@@ -186,10 +204,17 @@ class OverlayUI:
         self._glow_ids.clear()
         self._icon_ids.clear()
         self._sight_id = None
+        self._crosshair_ids.clear()
 
     def _draw_sight(self):
+        # 清除旧准星（含十字线）
         if self._sight_id:
             self._canvas.delete(self._sight_id)
+            self._sight_id = None
+        for cid in self._crosshair_ids:
+            self._canvas.delete(cid)
+        self._crosshair_ids.clear()
+
         sx = self._cx + self._sight_x
         sy = self._cy + self._sight_y
         r = 5
@@ -198,8 +223,12 @@ class OverlayUI:
             fill=ACCENT, outline="white", width=2,
         )
         cl = 10
-        self._canvas.create_line(sx - cl, sy, sx + cl, sy, fill="white", width=1)
-        self._canvas.create_line(sx, sy - cl, sx, sy + cl, fill="white", width=1)
+        self._crosshair_ids.append(
+            self._canvas.create_line(sx - cl, sy, sx + cl, sy, fill="white", width=1)
+        )
+        self._crosshair_ids.append(
+            self._canvas.create_line(sx, sy - cl, sx, sy + cl, fill="white", width=1)
+        )
 
     def _redraw(self):
         now = time.monotonic()
@@ -207,13 +236,13 @@ class OverlayUI:
             return
         self._last_draw_time = now
         for i in range(self._n):
-            color = HIGHLIGHT if i == self._selected_idx else DIM
-            glow = ACCENT if i == self._selected_idx else "#555555"
             tcol = FG if i == self._selected_idx else DIM
             if i < len(self._sector_ids):
-                self._canvas.itemconfig(self._sector_ids[i], outline=color)
+                out = HIGHLIGHT if i == self._selected_idx else DIM
+                self._canvas.itemconfig(self._sector_ids[i], outline=out)
             if i < len(self._glow_ids):
-                self._canvas.itemconfig(self._glow_ids[i], outline=glow)
+                fill = ACCENT if i == self._selected_idx else ""
+                self._canvas.itemconfig(self._glow_ids[i], fill=fill)
             if i < len(self._icon_ids):
                 self._canvas.itemconfig(self._icon_ids[i], fill=tcol)
         self._draw_sight()

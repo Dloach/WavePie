@@ -96,7 +96,7 @@ class WavePieV2:
 
         ble.on_aim = on_aim
 
-        ble.on_sector = on_sector
+        # ble.on_sector = on_sector  # removed, using on_aim instead
         ble.on_confirm = on_confirm
 
         def run():

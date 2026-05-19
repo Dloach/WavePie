@@ -30,7 +30,7 @@ menu:
     action_type: log
     label: 静音
   - action_payload: enter
-    action_type: log
+    action_type: script
     label: 回车
   - action_payload: win+l
     action_type: log

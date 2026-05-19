@@ -357,7 +357,7 @@ class OverlayUI:
                 ox - mr, oy - mr,
                 ox + mr, oy + mr,
                 start=deg0, extent=extent,
-                fill="", outline=SECTOR_LINE, width=1,
+                style="arc", outline=SECTOR_LINE, width=1,
             )
             self._ids["arcs"].append(aid)
             # 分隔线

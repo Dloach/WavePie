@@ -52,8 +52,8 @@ class WavePieV3:
 
         def _poll_sight():
             if self.ui.state == "menu_open":
-                rx = -ble.latest_roll / 127.0
-                ry = -ble.latest_pitch / 127.0
+                rx = -ble.latest_roll / 127.0 * 1.5
+                ry = -ble.latest_pitch / 127.0 * 1.5
                 # 指数平滑（去抖）
                 smooth = 0.65
                 self._smooth_rx = self._smooth_rx * smooth + rx * (1 - smooth)

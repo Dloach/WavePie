@@ -280,16 +280,19 @@ class OverlayUI:
             for i in range(self._n):
                 self._glow_targets[i] = 1.0 if i == new_idx else 0.0
 
-        # ── 磁吸：视觉准星拉向扇区中心 ──
-        if self._selected >= 0 and raw_d > dr * 0.7:
+        # ── 磁吸 ──
+        snap_active = self._selected >= 0 and raw_d > dr * 0.56  # 吸附范围 -20%
+        if snap_active:
             center_angle = (self._selected + 0.5) * self._angle - math.pi / 2
             raw_angle = math.atan2(-self._raw_sy, self._raw_sx)
             da = (center_angle - raw_angle + math.pi) % (2 * math.pi) - math.pi
             snapped_angle = raw_angle + da * SNAP
             ring_mid = (dr + mr) / 2
             snapped_d = raw_d + (ring_mid - raw_d) * SNAP_RADIAL
-            self._sx = snapped_d * math.cos(snapped_angle)
-            self._sy = -snapped_d * math.sin(snapped_angle)
+            snx = snapped_d * math.cos(snapped_angle)
+            sny = -snapped_d * math.sin(snapped_angle)
+            self._sx = self._sx * 0.3 + snx * 0.7   # 吸附时速度 -30%
+            self._sy = self._sy * 0.3 + sny * 0.7
         else:
             self._sx = self._raw_sx
             self._sy = self._raw_sy
@@ -332,17 +335,21 @@ class OverlayUI:
             fill="", outline="#1A1A3A", width=1,
         )
 
-        # ── 扇区填充块（高亮时变色，创建在死区之前故中心被死区圆形覆盖） ──
+        # ── 扇区填充块（纯环状：高亮只在环区，中心永远不亮） ──
+        rr = (dr + mr) / 2  # 弧线半径 = 环形中径
+        rw = mr - dr        # 弧线宽度 = 环形厚度
         self._ids["fills"] = []
         for i in range(n):
             a0 = i * self._angle - math.pi / 2
             deg0 = math.degrees(a0) + 1
             extent = math.degrees(self._angle) - 2
             fid = c.create_arc(
-                ox - mr, oy - mr,
-                ox + mr, oy + mr,
+                ox - rr, oy - rr,
+                ox + rr, oy + rr,
                 start=deg0, extent=extent,
-                fill=RING_FILL, outline="",
+                style="arc",
+                outline=RING_FILL,
+                width=rw,
             )
             self._ids["fills"].append(fid)
 
@@ -502,7 +509,7 @@ class OverlayUI:
             g = self._glows[i]
             # 填充块：从背景色过渡到发光色
             fill_color = _lerp_hex(RING_FILL, SECTOR_GLOW, g)
-            self._canvas.itemconfig(self._ids["fills"][i], fill=fill_color)
+            self._canvas.itemconfig(self._ids["fills"][i], outline=fill_color)
             # 边框弧线
             line_color = _lerp_hex(SECTOR_LINE, SECTOR_HL, g)
             self._canvas.itemconfig(self._ids["arcs"][i], outline=line_color)

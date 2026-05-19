@@ -2,8 +2,8 @@ ble:
   device_name: WavePie
 menu:
   items:
-  - action_payload: win+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+swin+shift+s
-    action_type: key
+  - action_payload: a
+    action_type: log
     label: 截图区域
   - action_payload: win+prtsc
     action_type: log

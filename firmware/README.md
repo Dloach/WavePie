@@ -22,10 +22,10 @@ Core 1: BLE 广播 + 连接管理
 
 ## 烧录
 
-Arduino IDE 打开 firmware.ino，选 ESP32 Dev Module 上传。
+PlatformIO（推荐）或 Arduino IDE 选 ESP32S3 Dev Module 上传。
 
 ## 引脚
 
 - GPIO 4 (INPUT_PULLUP) → 按键 → GND
 - GPIO 2 → 板载 LED（激活时亮）
-- SDA=21, SCL=22 → MPU6050
+- SDA=5, SCL=16 → MPU6050

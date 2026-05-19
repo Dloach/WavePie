@@ -23,8 +23,8 @@
 constexpr int PIN_BUTTON = 4;
 constexpr int PIN_LED    = 2;
 
-constexpr int SDA_PIN = 21;
-constexpr int SCL_PIN = 22;
+constexpr int SDA_PIN = 5;
+constexpr int SCL_PIN = 16;
 
 constexpr int   NUM_SECTORS      = 12;
 constexpr float MAX_ANGLE        = 60.0f;     // ±60° → 全范围

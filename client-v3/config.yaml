@@ -2,9 +2,9 @@ ble:
   device_name: WavePie
 menu:
   items:
-  - action_payload: a
-    action_type: log
-    label: 截图区域
+  - action_payload: win+e
+    action_type: key_combo
+    label: 资源管理器
   - action_payload: win+prtsc
     action_type: log
     label: 截全屏

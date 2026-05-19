@@ -54,8 +54,10 @@ class OverlayUI:
 
     @property
     def state(self): return self._state
+    @property
+    def selected_idx(self): return self._selected
 
-    def activate(self, num_sectors=12):
+    def activate(self, num_sectors=12, labels=None):
         if self._state!="idle": return
         self._state="menu_open"
         l,t,r,b=self._get_monitor_bounds()
@@ -63,6 +65,7 @@ class OverlayUI:
         cx,cy=(l+r)//2,(t+b)//2
         self._cx=cx-self._vx; self._cy=cy-self._vy
         self._sx=self._sy=0; self._selected=-1; self._n=max(2,min(12,num_sectors))
+        self._menu_labels = labels or [str(i) for i in range(self._n)]
         self._show_geom()
         self._build_menu()
         self._build_sight()
@@ -121,6 +124,7 @@ class OverlayUI:
         else:
             self._snapping = False
             self._sx, self._sy = sx, sy
+        self._update_highlight()
         self._redraw_sight()
 
     def _update_highlight(self):
@@ -162,21 +166,24 @@ class OverlayUI:
             self._ids["sec_seps"].append(c.create_line(
                 ox+ir*cs, oy-ir*sn, ox+mr*cs, oy-mr*sn,
                 fill="#88BBFF",width=1))
+        # 填充（必须先画，下面再画文字/标记在它之上）
+        self._ids["sec_fills"]=[]
+        for i in range(n):
+            s=(90-i*w+w/2)%360; e=-w
+            self._ids["sec_fills"].append(c.create_arc(
+                ox-mr,oy-mr,ox+mr,oy+mr,start=s,extent=e,
+                fill="#4488FF",outline="",stipple="gray50"))
+            self._canvas.coords(self._ids["sec_fills"][i],0,0,1,1)
+        # 文字标签（在填充之上）
         cr=(ir+mr)/2
         self._ids["sec_labels"]=[]
         for i in range(n):
             a=math.radians((90-i*w)%360)
             cs,sn=math.cos(a),math.sin(a)
+            label = self._menu_labels[i] if i < len(self._menu_labels) else str(i)
             self._ids["sec_labels"].append(c.create_text(
                 ox+cr*cs, oy-cr*sn,
-                text=str(i),fill="#FFFFFF",font=("Segoe UI",12,"bold"),anchor="center"))
-        self._ids["sec_fills"]=[]
-        for i in range(n):
-            s=(90-i*w+w/2)%360; e=-w  # 填充用全宽，不留缝
-            self._ids["sec_fills"].append(c.create_arc(
-                ox-mr,oy-mr,ox+mr,oy+mr,start=s,extent=e,
-                fill="#4488FF",outline="",stipple="gray50"))
-            self._canvas.coords(self._ids["sec_fills"][i],0,0,1,1)
+                text=label[:8],fill="#FFFFFF",font=("Segoe UI",12,"bold"),anchor="center"))
         r2=mr+16
         self._ids["zero_mark"]=c.create_text(ox,oy-mr-r2,
             text="0",fill="#FFD700",font=("Consolas",10,"bold"),anchor="center")

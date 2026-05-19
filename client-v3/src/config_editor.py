@@ -71,7 +71,7 @@ class KeyRecorderDialog:
     """按键录制弹窗。"""
     def __init__(self, parent):
         self._result: Optional[str] = None
-        self._keys = set()
+        self._keys = []  # 有序列表，保持按键顺序
         self._listening = True
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("录制快捷键")
@@ -125,11 +125,13 @@ class KeyRecorderDialog:
                 k = key.char.lower()
             except AttributeError:
                 k = key.name.lower() if hasattr(key, 'name') else str(key)
-            self._keys.add(k)
-            # 修饰键在前，普通键在后
-            display = " + ".join(
-                sorted(self._keys,
-                       key=lambda x: 0 if x in ("ctrl","alt","shift","win") else 1))
+            # 跨平台按键名 → Windows 命名
+            k = {"cmd":"win","cmd_l":"win","cmd_r":"win","cmd_r":"win",
+                 "ctrl_l":"ctrl","ctrl_r":"ctrl","alt_l":"alt","alt_r":"alt",
+                 "shift_l":"shift","shift_r":"shift"}.get(k, k)
+            if k not in self._keys:
+                self._keys.append(k)
+            display = " + ".join(self._keys)
             self.dialog.after(0, lambda t=display: self._display.config(text=t or "等待按键…"))
         def on_release(key):
             if key == keyboard.Key.esc:
@@ -140,9 +142,7 @@ class KeyRecorderDialog:
 
     def _confirm(self):
         if self._keys:
-            self._result = "+".join(
-                sorted(self._keys,
-                       key=lambda x: 0 if x in ("ctrl","alt","shift","win") else 1))
+            self._result = "+".join(self._keys)
         self._cleanup()
 
     def _cancel(self):

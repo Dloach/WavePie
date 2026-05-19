@@ -9,6 +9,12 @@ import yaml
 
 
 @dataclass
+class MenuConfig:
+    num_sectors: int = 6
+    items: list = field(default_factory=list)
+
+
+@dataclass
 class MenuItemDef:
     label: str = ""
     action_type: str = "log"
@@ -31,7 +37,7 @@ class BleConfig:
 class AppConfig:
     ble: BleConfig = field(default_factory=BleConfig)
     aim: AimConfig = field(default_factory=AimConfig)
-    menu: dict = field(default_factory=lambda: {"items": []})
+    menu: dict = field(default_factory=lambda: {"items": [], "num_sectors": 6})
 
     @property
     def menu_items(self):
@@ -82,8 +88,10 @@ def load_config(path: str = None) -> AppConfig:
     # Menu
     raw_menu = raw.get("menu", {})
     if isinstance(raw_menu, dict):
+        if "num_sectors" not in raw_menu:
+            raw_menu["num_sectors"] = 6
         cfg.menu = raw_menu
     else:
-        cfg.menu = {"items": []}
+        cfg.menu = {"items": [], "num_sectors": 6}
 
     return cfg

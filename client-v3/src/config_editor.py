@@ -742,7 +742,10 @@ class ConfigEditor:
     # ── 操作 ──
 
     def _add_item(self):
-        """添加新菜单项。"""
+        """添加新菜单项（最多12项）。"""
+        if len(self._items) >= 12:
+            messagebox.showwarning("已达上限", "最多12项菜单。", parent=self.root)
+            return
         new_item = {"label": "新命令", "action_type": "log", "action_payload": ""}
         self._items.append(new_item)
         self._render_card(len(self._items) - 1, new_item)

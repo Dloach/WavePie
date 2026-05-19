@@ -284,6 +284,9 @@ void core0_task(void* param) {
                 //   物理上下瞄准(pitch) = 传感器 -X = -gx
                 float gz_dps = gz / GYRO_SCALE;   // 左右(yaw)
                 float gx_dps = gx / GYRO_SCALE;   // 上下(pitch)
+                // 死区：小于 2°/s 视为 0（消除漂移）
+                if (fabsf(gz_dps) < 2.0f) gz_dps = 0;
+                if (fabsf(gx_dps) < 2.0f) gx_dps = 0;
                 accum_roll  += gz_dps * dt;        // 水平
                 accum_pitch += gx_dps * dt;        // 垂直
 

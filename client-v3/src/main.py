@@ -52,8 +52,8 @@ class WavePieV3:
 
         def _poll_sight():
             if self.ui.state == "menu_open":
-                rx = -ble.latest_roll / 127.0 * 1.5
-                ry = -ble.latest_pitch / 127.0 * 1.5
+                rx = -ble.latest_roll / 127.0 * 2.25
+                ry = -ble.latest_pitch / 127.0 * 2.25
                 # 指数平滑（去抖）
                 smooth = 0.65
                 self._smooth_rx = self._smooth_rx * smooth + rx * (1 - smooth)
@@ -66,7 +66,7 @@ class WavePieV3:
 
         def on_aim(roll_byte: int, pitch_byte: int):
             if self.ui.state != "menu_open":
-                self.ui.root.after(0, self.ui.activate)
+                self.ui.root.after(0, self.ui.activate, len(self._build_menu_items()))
 
         def on_confirm(idx: int):
             self.ui.root.after(0, self._on_confirm, idx)
@@ -95,7 +95,7 @@ class WavePieV3:
             else:
                 self.ui.deactivate()
         else:
-            self.ui.root.after(0, self.ui.activate)
+            self.ui.root.after(0, self.ui.activate, len(self._build_menu_items()))
 
     def _build_menu_items(self):
         class Item:

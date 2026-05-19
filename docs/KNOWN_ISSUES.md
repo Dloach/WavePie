@@ -122,7 +122,44 @@ void onDisconnect(BLEServer* s) override {
 
 ---
 
-## KB-005: Python 依赖的 bleak 3.x 没有 `get_services()`
+## KB-005: 准星方向调试
+
+**状态**: ✅ 已验证（MPU6050 逆时针旋转 90° 摆放）
+
+### 坐标轴映射（2026-05-16 最终确认）
+
+| 用户动作 | 固件积分 | BLE 字节 | main.py | 效果 |
+|---------|---------|---------|---------|------|
+| 手腕左转 | accum_roll += gz | roll_byte | rx = -roll / 127 × 1.5 | 准星左移 |
+| 手腕右转 | accum_roll += gz | roll_byte | rx = -roll / 127 × 1.5 | 准星右移 |
+| 手腕前倾（枪口上抬） | accum_pitch += gx | pitch_byte | ry = -pitch / 127 × 1.5 | 准星上移 |
+| 手腕后仰（枪口下压） | accum_pitch += gx | pitch_byte | ry = -pitch / 127 × 1.5 | 准星下移 |
+
+### 关键公式
+
+俯视图（芯片平放，文字朝上，小圆点左前，逆时针旋转 90°）：
+
+```
+        前倾（上）
+            ↑
+   左转 ←  芯片  → 右转
+            ↓
+        后仰（下）
+```
+
+- 陀螺仪 Z 轴（gz）= 左右旋转（yaw）→ `accum_roll`
+- 陀螺仪 X 轴（gx）= 前后俯仰（pitch）→ `accum_pitch`
+
+### 以后改方向只需调 main.py 的符号
+
+```python
+rx = -ble.latest_roll / 127.0 * 1.5   # 取反 = 方向正确
+ry = -ble.latest_pitch / 127.0 * 1.5  # 取反 = 方向正确
+```
+
+---
+
+## KB-006: Python 依赖的 bleak 3.x 没有 `get_services()`
 
 **状态**: ✅ 已知
 **严重度**: 🟡 中等

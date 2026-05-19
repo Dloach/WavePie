@@ -66,11 +66,10 @@ class WavePieV3:
 
         def on_aim(roll_byte: int, pitch_byte: int):
             if self.ui.state != "menu_open":
-                items = self._build_menu_items()
-                self.ui.root.after(0, self.ui.activate, items)
+                self.ui.root.after(0, self.ui.activate)
 
         def on_confirm(idx: int):
-            self.ui.root.after(0, self._on_confirm)
+            self.ui.root.after(0, self._on_confirm, idx)
 
         ble.on_aim = on_aim
         ble.on_confirm = on_confirm
@@ -85,19 +84,18 @@ class WavePieV3:
                 print(f"[BLE] ❌ {e}")
         threading.Thread(target=run, daemon=True).start()
 
-    def _on_confirm(self):
+    def _on_confirm(self, sector: int):
         if self.ui.state == "menu_open":
             items = self._build_menu_items()
-            sel = self.ui.selected_idx
-            if sel >= 0 and sel < len(items):
-                item = items[sel]
-                print(f"[Exec] 🎯 确认扇区{sel}: {item.label}")
+            if 0 <= sector < len(items):
+                item = items[sector]
+                print(f"[Exec] 🎯 确认扇区{sector}: {item.label}")
                 self.ui.deactivate()
                 self._do_action(item.action_type, item.action_payload)
             else:
                 self.ui.deactivate()
         else:
-            self.ui.root.after(0, self.ui.activate, self._build_menu_items())
+            self.ui.root.after(0, self.ui.activate)
 
     def _build_menu_items(self):
         class Item:

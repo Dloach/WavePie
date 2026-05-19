@@ -17,9 +17,6 @@ menu:
   - action_payload: ctrl+z
     action_type: log
     label: 撤销
-  - action_payload: ctrl+sctrl+sctrl+sctrl+s
-    action_type: log
-    label: 保存
   - action_payload: volume_up
     action_type: log
     label: 音量+
@@ -29,12 +26,3 @@ menu:
   - action_payload: volume_mute
     action_type: log
     label: 静音
-  - action_payload: enter
-    action_type: log
-    label: 回车
-  - action_payload: win+l
-    action_type: log
-    label: 锁屏
-  - action_payload: ctrl+win+left
-    action_type: log
-    label: 任务视图

@@ -49,7 +49,7 @@ GLOW_MS     = 100        # 发光过渡
 PULSE_S     = 2.2        # 呼吸周期(秒)
 SMOOTH      = 0.10       # 准星平滑系数（越小越快）
 SNAP        = 0.68       # 磁吸强度（0=关 1=瞬间吸附到扇区中心）
-SNAP_RADIAL = 0.35       # 径向磁吸（拉向环形中段）
+SNAP_RADIAL = 0.80       # 径向磁吸（拉向吸附带中心）
 
 # ═══════════════════════════════════════════════════
 #  小工具
@@ -264,11 +264,7 @@ class OverlayUI:
         self._in_dead = raw_d < dr
 
         if self._in_dead:
-            # 死区内：粘性保持上一次扇区（视觉高亮不灭）
-            if self._selected < 0:
-                new_idx = -1
-            else:
-                new_idx = self._selected
+            new_idx = -1  # 死区内不保持高亮
         else:
             new_idx = int(
                 (math.atan2(-self._raw_sy, self._raw_sx) + math.pi / 2)
@@ -281,14 +277,32 @@ class OverlayUI:
                 self._glow_targets[i] = 1.0 if i == new_idx else 0.0
 
         # ── 磁吸 ──
-        snap_active = self._selected >= 0 and raw_d > dr * 0.56  # 吸附范围 -20%
+        snap_active = self._selected >= 0 and raw_d > 0.35*mr + 0.65*dr
+
+        # 吸附区红色线框（闭合 - 外弧 + 内弧）
+        siv = self._ids.get("snap_indicator")
+        sii = self._ids.get("snap_inner")
+        if siv and sii and snap_active:
+            a0 = self._selected * self._angle - math.pi / 2
+            dg = math.degrees(a0) + 1
+            ex = math.degrees(self._angle) - 2
+            self._canvas.coords(siv, self._cx-mr, self._cy-mr, self._cx+mr, self._cy+mr)
+            self._canvas.itemconfig(siv, start=dg, extent=ex)
+            snap_inner_r = 0.35*mr + 0.65*dr  # 65% 环宽
+            self._canvas.coords(sii, self._cx-snap_inner_r, self._cy-snap_inner_r,
+                                       self._cx+snap_inner_r, self._cy+snap_inner_r)
+            self._canvas.itemconfig(sii, start=dg, extent=ex)
+        elif siv and sii:
+            self._canvas.coords(siv, 0, 0, 1, 1)
+            self._canvas.coords(sii, 0, 0, 1, 1)
+
         if snap_active:
             center_angle = (self._selected + 0.5) * self._angle - math.pi / 2
             raw_angle = math.atan2(-self._raw_sy, self._raw_sx)
             da = (center_angle - raw_angle + math.pi) % (2 * math.pi) - math.pi
             snapped_angle = raw_angle + da * SNAP
-            ring_mid = (dr + mr) / 2
-            snapped_d = raw_d + (ring_mid - raw_d) * SNAP_RADIAL
+            snap_center_r = (mr + 0.35*mr + 0.65*dr) / 2  # 吸附带中心
+            snapped_d = raw_d + (snap_center_r - raw_d) * SNAP_RADIAL
             snx = snapped_d * math.cos(snapped_angle)
             sny = -snapped_d * math.sin(snapped_angle)
             self._sx = self._sx * 0.3 + snx * 0.7   # 吸附时速度 -30%
@@ -427,6 +441,15 @@ class OverlayUI:
         self._ids["flash_arc"] = c.create_arc(
             0, 0, 1, 1, start=0, extent=1,
             fill="", outline=FLASH_COLOR, width=4,
+        )
+        # ── 吸附区红色线框（默认隐藏） ──
+        self._ids["snap_indicator"] = self._canvas.create_arc(
+            0, 0, 1, 1, start=0, extent=1,
+            style="arc", outline="red", width=2,
+        )
+        self._ids["snap_inner"] = self._canvas.create_arc(
+            0, 0, 1, 1, start=0, extent=1,
+            style="arc", outline="red", width=1,
         )
 
     # ══════════════════════════════════════════════

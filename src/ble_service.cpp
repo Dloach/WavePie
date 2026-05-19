@@ -21,15 +21,15 @@ void BLEServiceManager::begin(const char* deviceName) {
     adv->start();
 }
 
-void BLEServiceManager::sendSector(uint8_t sector) {
-    if (!_connected || !_charState) return;
-    uint8_t data[2] = { 0xAA, sector };
-    _charState->setValue(data, 2);
-    _charState->notify();
-}
+
 
 void BLEServiceManager::sendAim(int8_t roll, int8_t pitch) {
     if (!_connected || !_charState) return;
+    // 限速 ~100Hz（10ms 间隔）
+    static unsigned long last = 0;
+    unsigned long now = millis();
+    if (now - last < 10) return;
+    last = now;
     uint8_t data[3] = { 0xAA, (uint8_t)roll, (uint8_t)pitch };
     _charState->setValue(data, 3);
     _charState->notify();
@@ -38,6 +38,13 @@ void BLEServiceManager::sendAim(int8_t roll, int8_t pitch) {
 void BLEServiceManager::sendConfirm(uint8_t sector) {
     if (!_connected || !_charState) return;
     uint8_t data[2] = { 0xBB, sector };
+    _charState->setValue(data, 2);
+    _charState->notify();
+}
+
+void BLEServiceManager::sendSector(uint8_t sector) {
+    if (!_connected || !_charState) return;
+    uint8_t data[2] = { 0xAA, sector };
     _charState->setValue(data, 2);
     _charState->notify();
 }

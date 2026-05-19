@@ -16,15 +16,17 @@
 #include "madgwick.h"
 #include "ble_service.h"
 
+BLEServiceManager ble;  // 全局，setup 中初始化
+
 // ============================================================
 // 引脚 & 参数
 // ============================================================
 
-constexpr int PIN_BUTTON = 4;
+constexpr int PIN_BUTTON = 25;
 constexpr int PIN_LED    = 2;
 
-constexpr int SDA_PIN = 8;
-constexpr int SCL_PIN = 9;
+constexpr int SDA_PIN = 32;
+constexpr int SCL_PIN = 33;
 
 constexpr int   NUM_SECTORS      = 12;
 constexpr float MAX_ANGLE        = 60.0f;     // ±60° → 全范围
@@ -104,17 +106,9 @@ static uint8_t mpu_read(uint8_t reg) {
 
 static bool mpu_begin() {
     Wire.begin(SDA_PIN, SCL_PIN);
-    Wire.setClock(100000);  // S3 上降速到 100kHz
-    pinMode(SDA_PIN, INPUT_PULLUP);
-    pinMode(SCL_PIN, INPUT_PULLUP);
+    Wire.setClock(400000);
     delay(10);
-    // 重试 3 次
-    for (int i = 0; i < 3; i++) {
-        if (mpu_read(MPU6050_WHO_AM_I) == 0x68) goto found;
-        delay(50);
-    }
-    return false;
-found:
+    if (mpu_read(MPU6050_WHO_AM_I) != 0x68) return false;
     mpu_write(MPU6050_PWR_MGMT, 0x00);
     vTaskDelay(pdMS_TO_TICKS(100));
     mpu_write(MPU6050_GYRO_CONFIG, 0x00);   // ±250°/s
@@ -250,7 +244,14 @@ void core0_task(void* param) {
 
 
         // ── 状态机（独立于 IMU）──
+        // Debug: 按键原始电平（每次循环）
+        if (btn_stable != prev_btn) {
+            Serial.printf("[DBG] btn=%d raw=%d stable=%d pressed=%d released=%d\n",
+                          btn_stable, raw, stable, pressed, released);
+        }
+
         if (pressed && !locked) {
+            Serial.println("[BTN] 按下 🔒");
             accum_roll = 0.0f;
             accum_pitch = 0.0f;
             locked = true;
@@ -260,6 +261,7 @@ void core0_task(void* param) {
         }
 
         if (released && locked) {
+            Serial.println("[BTN] 松开 🔓");
             locked = false;
             digitalWrite(PIN_LED, LOW);
             if (current_sector >= 0) {
@@ -312,9 +314,6 @@ void core0_task(void* param) {
 // ============================================================
 
 void core1_task(void* param) {
-    BLEServiceManager ble;
-    ble.begin("WavePie");
-
     BLEEvent ev;
     while (true) {
         if (xQueueReceive(g_bleQueue, &ev, pdMS_TO_TICKS(50))) {
@@ -332,19 +331,28 @@ void core1_task(void* param) {
 // ============================================================
 
 void setup() {
+    Serial.begin(115200);
+    delay(200);
+    Serial.println("\n[Boot] WavePie V3");
+
     pinMode(PIN_LED, OUTPUT);
     digitalWrite(PIN_LED, LOW);
 
     g_bleQueue = xQueueCreate(8, sizeof(BLEEvent));
+    ble.begin("WavePie");
+    Serial.println("[BLE] ✅ 广播中");
     xTaskCreatePinnedToCore(core1_task, "BLE", 8192, NULL, 1, NULL, 1);
+    Serial.println("[BLE] ✅ Core 1 启动");
 
     if (!mpu_begin()) {
+        Serial.println("[Boot] ❌ MPU6050 失败");
         pinMode(PIN_LED, OUTPUT);
         while (true) {
             digitalWrite(PIN_LED, !digitalRead(PIN_LED));
             delay(100);
         }
     }
+    Serial.println("[Boot] ✅ MPU6050 OK");
 
     filter.setBeta(0.1f);
     core0_task(NULL);

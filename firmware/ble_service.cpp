@@ -2,6 +2,7 @@
 
 void BLEServiceManager::begin(const char* deviceName) {
     BLEDevice::init(deviceName);
+    Serial.printf("[BLE] 设备名: %s\n", deviceName);
     _server = BLEDevice::createServer();
     _server->setCallbacks(new ServerCB(&_connected));
 

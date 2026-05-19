@@ -23,8 +23,8 @@
 constexpr int PIN_BUTTON = 4;
 constexpr int PIN_LED    = 2;
 
-constexpr int SDA_PIN = 5;
-constexpr int SCL_PIN = 16;
+constexpr int SDA_PIN = 8;
+constexpr int SCL_PIN = 9;
 
 constexpr int   NUM_SECTORS      = 12;
 constexpr float MAX_ANGLE        = 60.0f;     // ±60° → 全范围
@@ -104,8 +104,17 @@ static uint8_t mpu_read(uint8_t reg) {
 
 static bool mpu_begin() {
     Wire.begin(SDA_PIN, SCL_PIN);
-    Wire.setClock(400000);
-    if (mpu_read(MPU6050_WHO_AM_I) != 0x68) return false;
+    Wire.setClock(100000);  // S3 上降速到 100kHz
+    pinMode(SDA_PIN, INPUT_PULLUP);
+    pinMode(SCL_PIN, INPUT_PULLUP);
+    delay(10);
+    // 重试 3 次
+    for (int i = 0; i < 3; i++) {
+        if (mpu_read(MPU6050_WHO_AM_I) == 0x68) goto found;
+        delay(50);
+    }
+    return false;
+found:
     mpu_write(MPU6050_PWR_MGMT, 0x00);
     vTaskDelay(pdMS_TO_TICKS(100));
     mpu_write(MPU6050_GYRO_CONFIG, 0x00);   // ±250°/s

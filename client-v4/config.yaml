@@ -1,0 +1,28 @@
+ble:
+  device_name: WavePie
+menu:
+  items:
+  - action_payload: '*'
+    action_type: key
+    label: ENTER
+  - action_payload: ctrl+z
+    action_type: key_combo
+    label: UNDO
+  - action_payload: ctrl+s
+    action_type: key_combo
+    label: SAVE
+  - action_payload: ctrl+shift+z
+    action_type: key_combo
+    label: REDO
+  - action_payload: ''
+    action_type: log
+    label: NEW COMMEND
+  - action_payload: ''
+    action_type: log
+    label: NEW COMMEND
+  - action_payload: ''
+    action_type: log
+    label: NEW COMMEND
+  - action_payload: ''
+    action_type: log
+    label: NEW COMMEND

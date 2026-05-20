@@ -25,10 +25,10 @@ void BLEServiceManager::begin(const char* deviceName) {
 
 void BLEServiceManager::sendAim(int8_t roll, int8_t pitch) {
     if (!_connected || !_charState) return;
-    // 限速 ~100Hz（10ms 间隔）
+    // 限速 ~250Hz（4ms 间隔）
     static unsigned long last = 0;
     unsigned long now = millis();
-    if (now - last < 10) return;
+    if (now - last < 4) return;
     last = now;
     uint8_t data[3] = { 0xAA, (uint8_t)roll, (uint8_t)pitch };
     _charState->setValue(data, 3);

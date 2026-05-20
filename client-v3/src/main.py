@@ -59,7 +59,7 @@ class WavePieV3:
                 self._smooth_rx = self._smooth_rx * smooth + rx * (1 - smooth)
                 self._smooth_ry = self._smooth_ry * smooth + ry * (1 - smooth)
                 self.ui.set_sight(self._smooth_rx, self._smooth_ry)
-            self.ui.root.after(16, _poll_sight)  # ~60fps
+            self.ui.root.after(8, _poll_sight)  # ~60fps
 
         # 启动准星轮询（60fps）
         self.ui.root.after(16, _poll_sight)
@@ -92,10 +92,10 @@ class WavePieV3:
             if 0 <= idx < len(items):
                 item = items[idx]
                 print(f"[Exec] 🎯 确认扇区{idx}: {item.label}")
-                self.ui.deactivate()
                 self._do_action(item.action_type, item.action_payload)
+                self.ui.confirm_and_exit()
             else:
-                self.ui.deactivate()
+                self.ui.deactivate()  # 无效选择，直接关闭
         else:
             items = self._build_menu_items()
             self.ui.root.after(0, self.ui.activate, len(items), [it.label for it in items])

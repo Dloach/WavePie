@@ -4,13 +4,25 @@ menu:
   items:
   - action_payload: win+e
     action_type: key_combo
-    label: 资源管理器
+    label: EXPLORER
   - action_payload: ctrl+z
     action_type: key_combo
-    label: 撤销
+    label: UNDO
   - action_payload: ctrl+s
     action_type: key_combo
-    label: 保存
+    label: SAVE
   - action_payload: ctrl+shift+z
     action_type: key_combo
-    label: 重复
+    label: REDO
+  - action_payload: ''
+    action_type: log
+    label: NEW COMMEND
+  - action_payload: ''
+    action_type: log
+    label: NEW COMMEND
+  - action_payload: ''
+    action_type: log
+    label: NEW COMMEND
+  - action_payload: ''
+    action_type: log
+    label: NEW COMMEND

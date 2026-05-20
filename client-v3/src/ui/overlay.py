@@ -66,18 +66,38 @@ class OverlayUI:
         self._cx=cx-self._vx; self._cy=cy-self._vy
         self._sx=self._sy=0; self._selected=-1; self._n=max(2,min(12,num_sectors))
         self._snapping = False; self._first_sight = True
-        self.root.after(150, lambda: setattr(self, '_first_sight', False))
+        self.root.after(250, lambda: setattr(self, '_first_sight', False))
         self._menu_labels = labels or [str(i) for i in range(self._n)]
         self._show_geom()
         self._build_menu()
         self._build_sight()
         self.root.lift()
 
-    def deactivate(self):
-        if self._state=="idle": return
-        self._state="idle"
-        self._canvas.delete("all"); self._ids.clear()
-        self._canvas.pack_forget(); self._idle_geom()
+
+    def confirm_and_exit(self):
+        if self._state != "menu_open": return
+        self._state = "confirming"
+        # 圆心显示命令名称
+        label = (self._menu_labels[self._selected] if 0 <= self._selected < len(self._menu_labels) else "")
+        self._ids["confirm_label"] = self._canvas.create_text(
+            self._cx, self._cy, text=label,
+            fill="#C8BC80", font=("Microsoft YaHei", 48, "bold"),
+            anchor="center")
+        self._confirm_t = time.monotonic()
+        self._step()
+
+    def _step(self):
+        t = time.monotonic() - self._confirm_t
+        if t >= 0.3:
+            self.deactivate(); return
+        # 菜单渐隐（立即开始）
+        self.root.attributes("-alpha", max(0.01, 0.85 * (1.0 - t/0.3)))
+        # 文字延迟 0.25s 后开始渐隐（0.05s 内快速消失）
+        if t >= 0.25:
+            la = max(0, 1.0 - (t-0.25)/0.05)
+            if "confirm_label" in self._ids:
+                self._canvas.itemconfig(self._ids["confirm_label"], fill=f"#{int(200*la):02x}{int(188*la):02x}{int(128*la):02x}")
+        self.root.after(16, self._step)
 
     def set_sight(self, rx:float, ry:float):
         if self._state!="menu_open": return
@@ -186,7 +206,7 @@ class OverlayUI:
             label = self._menu_labels[i] if i < len(self._menu_labels) else str(i)
             self._ids["sec_labels"].append(c.create_text(
                 ox+cr*cs, oy-cr*sn,
-                text=label[:8],fill="#FFFFFF",font=("Segoe UI",12,"bold"),anchor="center"))
+                text=label[:8],fill="#FFFFFF",font=("Microsoft YaHei",12,"bold"),anchor="center"))
         r2=mr+16
         self._ids["zero_mark"]=c.create_text(ox,oy-mr-r2,
             text="0",fill="#FFD700",font=("Consolas",10,"bold"),anchor="center")
@@ -212,3 +232,8 @@ class OverlayUI:
         self._canvas.coords(self._ids["ring"],sx-ro,sy-ro,sx+ro,sy+ro)
         for i,(dx,dy)in enumerate([(-1,0),(1,0),(0,-1),(0,1)]):
             self._canvas.coords(self._ids["cross"][i],sx+dx*cl,sy+dy*cl,sx+dx*ro,sy+dy*ro)
+    def deactivate(self):
+        if self._state=="idle": return
+        self._state="idle"
+        self._canvas.delete("all"); self._ids.clear()
+        self._canvas.pack_forget(); self._idle_geom()

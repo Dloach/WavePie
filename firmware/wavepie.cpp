@@ -222,6 +222,8 @@ void core0_task(void* param) {
     bool  locked = false;
     int   current_sector = -1;
     int   hyst_counter = 0;
+    unsigned long last_motion = 0;   // 最后一次检测到运动（毫秒）
+    bool  mpu_sleeping = false;      // MPU6050 是否休眠
 
     // 按键去抖状态
     bool  btn_stable = false;
@@ -270,6 +272,18 @@ void core0_task(void* param) {
             current_sector = -1;
         }
 
+        // ── MPU6050 休眠管理 ──
+        if (mpu_sleeping) {
+            if (pressed) {  // 按钮按下时唤醒
+                mpu_sleeping = false;
+                mpu_begin();
+                last_motion = millis();
+            }
+        } else if (!locked && millis() - last_motion > 180000) {  // 3分钟无运动 → 休眠
+            mpu_write(MPU6050_PWR_MGMT, 0x40);  // SLEEP 位
+            mpu_sleeping = true;
+        }
+
         // ── IMU 读取（100Hz，锁定有效时）──
         unsigned long now = millis();
         if (now - last_imu >= IMU_INTERVAL_MS && locked) {
@@ -282,13 +296,14 @@ void core0_task(void* param) {
                 //   旋转后: X→左后  Y→右手  Z→竖直
                 //   物理左右瞄准(yaw)   = 传感器 Z = gz
                 //   物理上下瞄准(pitch) = 传感器 -X = -gx
-                float gz_dps = gz / GYRO_SCALE;   // 左右(yaw)
-                float gx_dps = gx / GYRO_SCALE;   // 上下(pitch)
-                // 死区：小于 2°/s 视为 0（消除漂移）
+                float gz_dps = gz / GYRO_SCALE;
+                float gx_dps = gx / GYRO_SCALE;
                 if (fabsf(gz_dps) < 2.0f) gz_dps = 0;
                 if (fabsf(gx_dps) < 2.0f) gx_dps = 0;
-                accum_roll  += gz_dps * dt;        // 水平
-                accum_pitch += gx_dps * dt;        // 垂直
+                // 运动检测
+                if (gz_dps != 0 || gx_dps != 0) last_motion = millis();
+                accum_roll  += gz_dps * dt;
+                accum_pitch += gx_dps * dt;
 
                 // 钳位到 ±30°（对应 int8 -127~+127）
                 accum_roll  = constrain(accum_roll, -30.0f, 30.0f);

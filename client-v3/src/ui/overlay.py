@@ -50,7 +50,7 @@ class OverlayUI:
         self.root.geometry(f"{self._vw}x{self._vh}+{self._vx}+{self._vy}")
         self.root.update_idletasks()
         self._canvas.configure(width=self._vw,height=self._vh)
-        self._canvas.pack(); self.root.lift(); self.root.focus_force()
+        self._canvas.pack(); self.root.lift()
 
     @property
     def state(self): return self._state
@@ -65,11 +65,13 @@ class OverlayUI:
         cx,cy=(l+r)//2,(t+b)//2
         self._cx=cx-self._vx; self._cy=cy-self._vy
         self._sx=self._sy=0; self._selected=-1; self._n=max(2,min(12,num_sectors))
+        self._snapping = False; self._first_sight = True
+        self.root.after(150, lambda: setattr(self, '_first_sight', False))
         self._menu_labels = labels or [str(i) for i in range(self._n)]
         self._show_geom()
         self._build_menu()
         self._build_sight()
-        self.root.lift(); self.root.focus_force()
+        self.root.lift()
 
     def deactivate(self):
         if self._state=="idle": return
@@ -98,9 +100,9 @@ class OverlayUI:
                 else:
                     if a >= end or a <= s: sel = i; break
         self._selected = sel
-        # 吸附
+        # 吸附（首次不吸附，避免从圆心跳跃）
         snap_d = self._menu_r * 0.6
-        in_snap = sel >= 0 and d >= snap_d
+        in_snap = sel >= 0 and d >= snap_d and not self._first_sight
         if in_snap:
             ca = math.radians((90 - sel*w) % 360)
             cr = self._menu_r * 0.75
@@ -123,7 +125,8 @@ class OverlayUI:
             self._sy = fy + (ty - fy) * t
         else:
             self._snapping = False
-            self._sx, self._sy = sx, sy
+            if not self._first_sight:
+                self._sx, self._sy = sx, sy
         self._update_highlight()
         self._redraw_sight()
 
@@ -197,12 +200,12 @@ class OverlayUI:
         self._ids["ring_hole"]=c.create_oval(ox-ir,oy-ir,ox+ir,oy+ir,fill="black",outline="")
 
     def _build_sight(self):
-        self._ids["dot"]=self._canvas.create_oval(0,0,1,1,fill=SIGHT_INNER,outline="")
-        self._ids["ring"]=self._canvas.create_oval(0,0,1,1,fill="",outline=SIGHT_OUTER,width=1.5)
-        self._ids["cross"]=[self._canvas.create_line(0,0,1,1,fill=SIGHT_LINE,width=1) for _ in range(4)]
+        self._ids["dot"]=self._canvas.create_oval(-10,-10,0,0,fill=SIGHT_INNER,outline="")
+        self._ids["ring"]=self._canvas.create_oval(-10,-10,0,0,fill="",outline=SIGHT_OUTER,width=1.5)
+        self._ids["cross"]=[self._canvas.create_line(-10,-10,0,0,fill=SIGHT_LINE,width=1) for _ in range(4)]
 
     def _redraw_sight(self):
-        if"dot"not in self._ids: return
+        if"dot"not in self._ids or self._first_sight: return
         sx=self._cx+self._sx; sy=self._cy+self._sy
         r,ro,cl=5,15,12
         self._canvas.coords(self._ids["dot"],sx-r,sy-r,sx+r,sy+r)

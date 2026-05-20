@@ -122,7 +122,11 @@ class KeyRecorderDialog:
             if not self._listening:
                 return False
             try:
-                k = key.char.lower()
+                k = key.char
+                # Ctrl组合键产生控制字符（\x01-\x1a）→ 还原为字母
+                if k and ord(k) < 32:
+                    k = chr(ord(k) + 96)
+                k = k.lower()
             except AttributeError:
                 k = key.name.lower() if hasattr(key, 'name') else str(key)
             # 跨平台按键名 → Windows 命名

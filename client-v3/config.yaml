@@ -5,18 +5,12 @@ menu:
   - action_payload: win+e
     action_type: key_combo
     label: 资源管理器
-  - action_payload: win+prtsc
-    action_type: log
-    label: 截全屏
-  - action_payload: volume_down
-    action_type: log
-    label: 音量-
-  - action_payload: ''
-    action_type: log
-    label: 新命令
-  - action_payload: ''
-    action_type: log
-    label: 新命令
-  - action_payload: ''
-    action_type: log
-    label: 新命令
+  - action_payload: ctrl+z
+    action_type: key_combo
+    label: 撤销
+  - action_payload: ctrl+s
+    action_type: key_combo
+    label: 保存
+  - action_payload: ctrl+shift+z
+    action_type: key_combo
+    label: 重复
